@@ -1,0 +1,105 @@
+# Helpful example repos
+/conformance/
+/mcpjam-inspector/
+/typescript-sdk/
+
+
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Next.js
+.next/
+out/
+build/
+.vercel
+
+# Production
+dist/
+
+# Testing - Playwright
+playwright-report/
+playwright/.cache/
+test-results/
+blob-report/
+.playwright/
+
+# Testing - General
+coverage/
+*.lcov
+.nyc_output/
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Local env files
+.env
+.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Cache
+.cache/
+.eslintcache
+.turbo/
+
+# Misc
+*.pem
+*.log
+tmp/
+temp/
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Optional npm cache
+.npm/
+
+# Optional REPL history
+.node_repl_history
+
+# Yarn
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Bun
+.bun/
+bun.lockb
+
+# Package manager lock files (keep the one you use, remove others if needed)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Storybook (if used)
+storybook-static/
+
+# PWA files
+**/public/sw.js
+**/public/workbox-*.js
+**/public/worker-*.js
+
+# Sentry
+.sentryclirc
