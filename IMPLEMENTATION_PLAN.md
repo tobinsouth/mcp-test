@@ -2112,6 +2112,659 @@ export async function GET(request: NextRequest) {
 
 ---
 
+## 8.3 Cross-Process OAuth Session Management
+
+### The Problem
+
+The OAuth callback flow in the web platform has a critical architectural challenge:
+
+1. **Serverless Reality**: Next.js on Vercel/similar runs each request in isolated serverless functions with no shared memory
+2. **Process Isolation**: The test runner may run as a separate process (background job, worker, etc.) from the web server receiving OAuth callbacks
+3. **Current Section 8.2 Limitation**: Uses in-memory `pendingAuthSessions` Map which cannot work across process/instance boundaries
+
+### Solution: Session Store + Polling Architecture
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                              FLOW                                       │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│   1. Runner generates runId, stores session as "pending"                │
+│                     │                                                   │
+│                     ▼                                                   │
+│   2. Runner encodes runId in OAuth state: "mcp:{runId}:{originalState}" │
+│                     │                                                   │
+│                     ▼                                                   │
+│   3. Runner returns auth URL to web UI, starts polling                  │
+│                     │                                                   │
+│   ┌─────────────────┼─────────────────┐                                │
+│   │                 │                 │                                 │
+│   ▼                 ▼                 ▼                                 │
+│ [Web UI]        [Session Store]    [Runner]                            │
+│ Opens URL       (Redis/DB/KV)      Polls /api/auth/poll/{runId}        │
+│   │                 │                 │                                 │
+│   ▼                 │                 │                                 │
+│ User consents       │                 │                                 │
+│   │                 │                 │                                 │
+│   ▼                 │                 │                                 │
+│ AS redirects to     │                 │                                 │
+│ /api/auth/callback  │                 │                                 │
+│   │                 │                 │                                 │
+│   ▼                 ▼                 │                                 │
+│ 4. Callback handler parses state,    │                                 │
+│    extracts runId, updates session   │                                 │
+│    to "callback_received"            │                                 │
+│                     │                 │                                 │
+│                     ▼                 ▼                                 │
+│                 5. Runner's poll sees update,                          │
+│                    gets code, continues auth flow                      │
+│                                                                         │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 8.3.1 Session Store Interface
+
+```typescript
+// src/auth/session-store.ts
+
+export interface AuthSession {
+  runId: string;
+  status: 'pending' | 'callback_received' | 'error' | 'expired';
+  createdAt: string;
+  expiresAt: string;
+
+  // Set when authorization URL is generated
+  authorizationUrl?: string;
+  originalState?: string;  // The PKCE state before encoding
+
+  // Set when callback is received
+  callbackData?: {
+    code: string;
+    state: string;  // The encoded state from callback
+  };
+
+  // Set on error
+  error?: string;
+}
+
+export interface AuthSessionStore {
+  /**
+   * Create a new pending session
+   */
+  create(runId: string, expiresInMs?: number): Promise<void>;
+
+  /**
+   * Get session by runId
+   */
+  get(runId: string): Promise<AuthSession | null>;
+
+  /**
+   * Update session with authorization URL and original state
+   */
+  setAuthorizationUrl(runId: string, url: string, originalState: string): Promise<void>;
+
+  /**
+   * Update session when callback is received
+   */
+  updateWithCallback(runId: string, code: string, state: string): Promise<void>;
+
+  /**
+   * Update session with error
+   */
+  updateWithError(runId: string, error: string): Promise<void>;
+
+  /**
+   * Delete session (cleanup)
+   */
+  delete(runId: string): Promise<void>;
+}
+```
+
+### 8.3.2 State Parameter Encoding
+
+The OAuth `state` parameter serves dual purposes:
+1. **CSRF Protection**: Original PKCE-generated state
+2. **Session Tracking**: Our `runId` for cross-process communication
+
+```typescript
+// src/auth/state-encoding.ts
+
+const STATE_PREFIX = 'mcp';
+const STATE_SEPARATOR = ':';
+
+/**
+ * Encode runId and original state into OAuth state parameter
+ * Format: "mcp:{runId}:{originalState}"
+ */
+export function encodeState(runId: string, originalState: string): string {
+  return `${STATE_PREFIX}${STATE_SEPARATOR}${runId}${STATE_SEPARATOR}${originalState}`;
+}
+
+/**
+ * Decode OAuth state parameter back to runId and original state
+ */
+export function decodeState(encodedState: string): { runId: string; originalState: string } | null {
+  const parts = encodedState.split(STATE_SEPARATOR);
+
+  if (parts[0] !== STATE_PREFIX || parts.length < 3) {
+    return null;  // Not our encoded state
+  }
+
+  const runId = parts[1];
+  // Original state may contain separators, so join remaining parts
+  const originalState = parts.slice(2).join(STATE_SEPARATOR);
+
+  return { runId, originalState };
+}
+```
+
+### 8.3.3 Web Interactive Auth Handler
+
+For the web platform, the `InteractiveAuthHandler` works differently from CLI:
+- It stores the session, modifies the state, and returns the URL
+- The web UI opens the URL (not the handler)
+- It polls the session store for callback completion
+
+```typescript
+// src/auth/web-auth-handler.ts
+
+import { InteractiveAuthHandler } from './test-oauth-provider';
+import { AuthSessionStore } from './session-store';
+import { encodeState, decodeState } from './state-encoding';
+
+/**
+ * Web platform interactive auth handler.
+ *
+ * Unlike CLI handler which opens browser directly,
+ * this handler integrates with the session store for
+ * cross-process OAuth callback handling.
+ */
+export function createWebAuthHandler(
+  sessionStore: AuthSessionStore,
+  runId: string,
+  options: {
+    pollIntervalMs?: number;
+    timeoutMs?: number;
+    onAuthUrlReady?: (url: URL) => void;  // Callback when URL is ready
+  } = {}
+): InteractiveAuthHandler {
+  const {
+    pollIntervalMs = 2000,
+    timeoutMs = 5 * 60 * 1000,  // 5 minutes default
+  } = options;
+
+  return {
+    async onAuthorizationRequired(authorizationUrl: URL): Promise<void> {
+      // 1. Create pending session
+      await sessionStore.create(runId, timeoutMs);
+
+      // 2. Get original state from URL
+      const originalState = authorizationUrl.searchParams.get('state') || '';
+
+      // 3. Encode our runId into the state parameter
+      const encodedState = encodeState(runId, originalState);
+      authorizationUrl.searchParams.set('state', encodedState);
+
+      // 4. Store the authorization URL and original state
+      await sessionStore.setAuthorizationUrl(
+        runId,
+        authorizationUrl.toString(),
+        originalState
+      );
+
+      // 5. Notify that URL is ready (web UI will open it)
+      options.onAuthUrlReady?.(authorizationUrl);
+    },
+
+    async waitForCallback(): Promise<{ code: string; state?: string }> {
+      const deadline = Date.now() + timeoutMs;
+
+      while (Date.now() < deadline) {
+        const session = await sessionStore.get(runId);
+
+        if (!session) {
+          throw new Error(`Session not found: ${runId}`);
+        }
+
+        if (session.status === 'callback_received' && session.callbackData) {
+          // Return the original state (for CSRF validation in provider)
+          return {
+            code: session.callbackData.code,
+            state: session.originalState,
+          };
+        }
+
+        if (session.status === 'error') {
+          throw new Error(session.error || 'OAuth authorization failed');
+        }
+
+        if (session.status === 'expired') {
+          throw new Error('OAuth session expired');
+        }
+
+        // Wait before polling again
+        await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+      }
+
+      // Timeout - mark session as expired
+      await sessionStore.updateWithError(runId, 'OAuth callback timeout');
+      throw new Error(`OAuth callback timeout after ${timeoutMs}ms`);
+    },
+  };
+}
+```
+
+### 8.3.4 Updated OAuth Callback API Route
+
+```typescript
+// web/app/api/oauth/callback/route.ts
+
+import { NextRequest, NextResponse } from 'next/server';
+import { getSessionStore } from '@/lib/session-store';
+import { decodeState } from '@/lib/state-encoding';
+
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const code = searchParams.get('code');
+  const state = searchParams.get('state');
+  const error = searchParams.get('error');
+  const errorDescription = searchParams.get('error_description');
+
+  // Parse the encoded state to get runId
+  if (!state) {
+    return createErrorPage('Missing state parameter');
+  }
+
+  const decoded = decodeState(state);
+  if (!decoded) {
+    return createErrorPage('Invalid state format');
+  }
+
+  const { runId } = decoded;
+  const sessionStore = getSessionStore();
+
+  // Handle error response from authorization server
+  if (error) {
+    await sessionStore.updateWithError(
+      runId,
+      errorDescription || error
+    );
+
+    return createResultPage({
+      success: false,
+      title: 'Authorization Failed',
+      message: errorDescription || error,
+      runId,
+    });
+  }
+
+  // Handle success - store the callback data
+  if (!code) {
+    return createErrorPage('Missing authorization code');
+  }
+
+  await sessionStore.updateWithCallback(runId, code, state);
+
+  return createResultPage({
+    success: true,
+    title: 'Authorization Successful',
+    message: 'You can close this window and return to the test runner.',
+    runId,
+  });
+}
+
+function createErrorPage(message: string): NextResponse {
+  return new NextResponse(
+    `<!DOCTYPE html>
+    <html>
+      <head><title>OAuth Error</title></head>
+      <body style="font-family: system-ui; padding: 40px; text-align: center;">
+        <h1 style="color: #dc2626;">Error</h1>
+        <p>${escapeHtml(message)}</p>
+      </body>
+    </html>`,
+    { headers: { 'Content-Type': 'text/html' } }
+  );
+}
+
+function createResultPage(options: {
+  success: boolean;
+  title: string;
+  message: string;
+  runId: string;
+}): NextResponse {
+  const color = options.success ? '#16a34a' : '#dc2626';
+
+  return new NextResponse(
+    `<!DOCTYPE html>
+    <html>
+      <head>
+        <title>${escapeHtml(options.title)}</title>
+        <script>
+          // Attempt to close window after brief delay
+          setTimeout(() => window.close(), 2000);
+
+          // Send message to opener if available (for popup flow)
+          if (window.opener) {
+            window.opener.postMessage({
+              type: 'oauth_callback',
+              success: ${options.success},
+              runId: '${options.runId}'
+            }, '*');
+          }
+        </script>
+      </head>
+      <body style="font-family: system-ui; padding: 40px; text-align: center;">
+        <h1 style="color: ${color};">${escapeHtml(options.title)}</h1>
+        <p>${escapeHtml(options.message)}</p>
+        <p style="color: #666; font-size: 14px;">This window will close automatically...</p>
+      </body>
+    </html>`,
+    { headers: { 'Content-Type': 'text/html' } }
+  );
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+```
+
+### 8.3.5 Polling API Route
+
+```typescript
+// web/app/api/auth/poll/[runId]/route.ts
+
+import { NextRequest, NextResponse } from 'next/server';
+import { getSessionStore } from '@/lib/session-store';
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { runId: string } }
+) {
+  const sessionStore = getSessionStore();
+  const session = await sessionStore.get(params.runId);
+
+  if (!session) {
+    return NextResponse.json(
+      { error: 'Session not found' },
+      { status: 404 }
+    );
+  }
+
+  return NextResponse.json({
+    status: session.status,
+    // Only include callback data if ready
+    ...(session.status === 'callback_received' && session.callbackData
+      ? { code: session.callbackData.code }
+      : {}
+    ),
+    ...(session.status === 'error'
+      ? { error: session.error }
+      : {}
+    ),
+  });
+}
+```
+
+### 8.3.6 Session Store Implementations
+
+#### In-Memory (Development Only)
+
+```typescript
+// src/auth/stores/memory-store.ts
+
+import { AuthSession, AuthSessionStore } from '../session-store';
+
+/**
+ * In-memory session store for development/testing.
+ *
+ * WARNING: This only works for single-process deployments.
+ * Use Redis or database store for production.
+ */
+export class MemorySessionStore implements AuthSessionStore {
+  private sessions = new Map<string, AuthSession>();
+
+  async create(runId: string, expiresInMs = 5 * 60 * 1000): Promise<void> {
+    const now = new Date();
+    this.sessions.set(runId, {
+      runId,
+      status: 'pending',
+      createdAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + expiresInMs).toISOString(),
+    });
+  }
+
+  async get(runId: string): Promise<AuthSession | null> {
+    const session = this.sessions.get(runId);
+    if (!session) return null;
+
+    // Check expiration
+    if (new Date(session.expiresAt) < new Date()) {
+      session.status = 'expired';
+    }
+
+    return session;
+  }
+
+  async setAuthorizationUrl(runId: string, url: string, originalState: string): Promise<void> {
+    const session = this.sessions.get(runId);
+    if (session) {
+      session.authorizationUrl = url;
+      session.originalState = originalState;
+    }
+  }
+
+  async updateWithCallback(runId: string, code: string, state: string): Promise<void> {
+    const session = this.sessions.get(runId);
+    if (session) {
+      session.status = 'callback_received';
+      session.callbackData = { code, state };
+    }
+  }
+
+  async updateWithError(runId: string, error: string): Promise<void> {
+    const session = this.sessions.get(runId);
+    if (session) {
+      session.status = 'error';
+      session.error = error;
+    }
+  }
+
+  async delete(runId: string): Promise<void> {
+    this.sessions.delete(runId);
+  }
+}
+```
+
+#### Redis/Upstash (Production)
+
+```typescript
+// src/auth/stores/redis-store.ts
+
+import { Redis } from '@upstash/redis';  // Or ioredis for self-hosted
+import { AuthSession, AuthSessionStore } from '../session-store';
+
+/**
+ * Redis-backed session store for production deployments.
+ * Works with Upstash (serverless) or self-hosted Redis.
+ */
+export class RedisSessionStore implements AuthSessionStore {
+  private prefix = 'mcp-test:auth:';
+
+  constructor(private redis: Redis) {}
+
+  private key(runId: string): string {
+    return `${this.prefix}${runId}`;
+  }
+
+  async create(runId: string, expiresInMs = 5 * 60 * 1000): Promise<void> {
+    const now = new Date();
+    const session: AuthSession = {
+      runId,
+      status: 'pending',
+      createdAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + expiresInMs).toISOString(),
+    };
+
+    // Set with TTL (Redis handles expiration)
+    await this.redis.set(this.key(runId), JSON.stringify(session), {
+      px: expiresInMs,  // Expire in milliseconds
+    });
+  }
+
+  async get(runId: string): Promise<AuthSession | null> {
+    const data = await this.redis.get(this.key(runId));
+    if (!data) return null;
+    return JSON.parse(data as string);
+  }
+
+  async setAuthorizationUrl(runId: string, url: string, originalState: string): Promise<void> {
+    const session = await this.get(runId);
+    if (session) {
+      session.authorizationUrl = url;
+      session.originalState = originalState;
+      await this.redis.set(this.key(runId), JSON.stringify(session), {
+        keepttl: true,  // Keep existing TTL
+      });
+    }
+  }
+
+  async updateWithCallback(runId: string, code: string, state: string): Promise<void> {
+    const session = await this.get(runId);
+    if (session) {
+      session.status = 'callback_received';
+      session.callbackData = { code, state };
+      await this.redis.set(this.key(runId), JSON.stringify(session), {
+        keepttl: true,
+      });
+    }
+  }
+
+  async updateWithError(runId: string, error: string): Promise<void> {
+    const session = await this.get(runId);
+    if (session) {
+      session.status = 'error';
+      session.error = error;
+      await this.redis.set(this.key(runId), JSON.stringify(session), {
+        keepttl: true,
+      });
+    }
+  }
+
+  async delete(runId: string): Promise<void> {
+    await this.redis.del(this.key(runId));
+  }
+}
+```
+
+### 8.3.7 Session Store Factory
+
+```typescript
+// web/lib/session-store.ts
+
+import { AuthSessionStore } from '@/src/auth/session-store';
+import { MemorySessionStore } from '@/src/auth/stores/memory-store';
+import { RedisSessionStore } from '@/src/auth/stores/redis-store';
+import { Redis } from '@upstash/redis';
+
+let sessionStore: AuthSessionStore | null = null;
+
+export function getSessionStore(): AuthSessionStore {
+  if (sessionStore) return sessionStore;
+
+  // Use Redis in production, memory in development
+  if (process.env.UPSTASH_REDIS_REST_URL) {
+    const redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    });
+    sessionStore = new RedisSessionStore(redis);
+  } else if (process.env.REDIS_URL) {
+    // For self-hosted Redis (would use ioredis)
+    throw new Error('Self-hosted Redis not implemented - use UPSTASH_REDIS_REST_URL');
+  } else {
+    console.warn(
+      '⚠️  Using in-memory session store. ' +
+      'This will NOT work in serverless deployments. ' +
+      'Set UPSTASH_REDIS_REST_URL for production.'
+    );
+    sessionStore = new MemorySessionStore();
+  }
+
+  return sessionStore;
+}
+```
+
+### 8.3.8 Web Platform Runner Integration
+
+Update the web platform's runner wrapper to use the web auth handler:
+
+```typescript
+// web/lib/runner.ts
+
+import { runTests } from '@/src/runner';
+import { createWebAuthHandler } from '@/src/auth/web-auth-handler';
+import { getSessionStore } from './session-store';
+
+export interface WebRunnerOptions {
+  configPath: string;
+  anthropicApiKey?: string;
+  onProgress?: (phase: string, check: any) => void;
+  onAuthUrlReady?: (runId: string, url: URL) => void;
+}
+
+export async function runTestsForWeb(options: WebRunnerOptions) {
+  // Generate unique run ID
+  const runId = crypto.randomUUID();
+  const sessionStore = getSessionStore();
+
+  // Create web-specific auth handler
+  const interactiveHandler = createWebAuthHandler(
+    sessionStore,
+    runId,
+    {
+      pollIntervalMs: 1000,  // Poll faster in web context
+      timeoutMs: 5 * 60 * 1000,
+      onAuthUrlReady: (url) => {
+        options.onAuthUrlReady?.(runId, url);
+      },
+    }
+  );
+
+  try {
+    const report = await runTests(options.configPath, {
+      anthropicApiKey: options.anthropicApiKey,
+      onProgress: options.onProgress,
+      interactiveHandler,  // Use our web handler
+    });
+
+    return { runId, report };
+  } finally {
+    // Cleanup session
+    await sessionStore.delete(runId);
+  }
+}
+```
+
+### 8.3.9 Environment Variables
+
+Add to `.env.example`:
+
+```bash
+# OAuth Session Store (required for serverless deployments)
+UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
+UPSTASH_REDIS_REST_TOKEN=xxx
+
+# Alternative: Self-hosted Redis
+# REDIS_URL=redis://localhost:6379
+```
+
+---
+
 ## 9. Code Patterns from SDK
 
 ### 9.1 SDK Functions We Use Directly
