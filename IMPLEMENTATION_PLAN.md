@@ -1743,13 +1743,15 @@ import { runProtocolPhase } from './phases/protocol';
 import { runToolsPhase } from './phases/tools';
 import { runInteractionPhase } from './phases/interaction';
 import { createCLIAuthHandler } from './cli/interactive-auth';
+import type { InteractiveAuthHandler } from './auth/test-oauth-provider';
 
 export async function runTests(
   configPath: string,
   options?: {
     anthropicApiKey?: string;
     onProgress?: (phase: string, check: TestCheck) => void;
-    interactive?: boolean;  // Enable interactive OAuth flow
+    interactive?: boolean;  // Enable interactive OAuth flow (CLI mode)
+    interactiveHandler?: InteractiveAuthHandler;  // Custom handler (web mode)
   }
 ): Promise<TestReport> {
   const configRaw = await fs.readFile(configPath, 'utf-8');
@@ -1775,10 +1777,11 @@ export async function runTests(
   try {
     // Phase 1: Auth (discovery only - actual auth happens in protocol phase)
     if (config.phases?.auth?.enabled !== false) {
-      // Create interactive handler if needed
-      const interactiveHandler = options?.interactive
-        ? createCLIAuthHandler()
-        : undefined;
+      // Create interactive handler if needed:
+      // - Use provided handler (web mode)
+      // - Or create CLI handler if --interactive flag is set
+      const interactiveHandler = options?.interactiveHandler
+        ?? (options?.interactive ? createCLIAuthHandler() : undefined);
 
       const authResult = await runAuthPhase(
         config.server.url,
