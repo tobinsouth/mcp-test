@@ -240,6 +240,7 @@ export interface PhaseResult {
     warning: number;
     skipped: number;
   };
+  cleanup?: () => Promise<void>;  // Cleanup function for resource management
 }
 
 export interface TestReport {
@@ -457,7 +458,7 @@ export class TestOAuthProvider implements OAuthClientProvider {
     this.recorder.pushCheck({
       id: 'auth-redirect-initiated',
       name: 'Authorization Redirect',
-      description: 'Initiating authorization redirect',
+      description: 'Authorization URL generated - awaiting user consent',
       status: 'INFO',
       timestamp: new Date().toISOString(),
       details: {
@@ -470,10 +471,12 @@ export class TestOAuthProvider implements OAuthClientProvider {
     });
 
     if (this.interactiveHandler) {
-      // Web UI mode: notify handler and wait for callback
+      // Interactive mode: notify handler and wait for callback
+      // This works for both web UI and CLI with browser opening
       await this.interactiveHandler.onAuthorizationRequired(authorizationUrl);
       const callback = await this.interactiveHandler.waitForCallback();
 
+      // Validate state to prevent CSRF
       if (callback.state && callback.state !== this._state) {
         this.recorder.pushCheck({
           id: 'auth-state-mismatch',
@@ -496,30 +499,24 @@ export class TestOAuthProvider implements OAuthClientProvider {
         timestamp: new Date().toISOString(),
       });
     } else {
-      // Headless mode: auto-approve by following redirect (for testing)
-      const response = await fetch(authorizationUrl.toString(), {
-        redirect: 'manual',
+      // No interactive handler - this is an error for real OAuth flows
+      // User must provide an interactive handler or use pre-registered credentials
+      this.recorder.pushCheck({
+        id: 'auth-interactive-required',
+        name: 'Interactive Auth Required',
+        description: 'OAuth consent flow requires user interaction',
+        status: 'FAILURE',
+        timestamp: new Date().toISOString(),
+        errorMessage: 'No interactive handler provided for OAuth consent flow. ' +
+          'Either provide an InteractiveAuthHandler or use pre-registered client credentials.',
+        details: {
+          authorizationUrl: authorizationUrl.toString(),
+        },
       });
-
-      const location = response.headers.get('location');
-      if (location) {
-        const redirectUrl = new URL(location);
-        const code = redirectUrl.searchParams.get('code');
-        if (code) {
-          this._authorizationCode = code;
-          this.recorder.pushCheck({
-            id: 'auth-auto-approved',
-            name: 'Auto-Approval',
-            description: 'Authorization auto-approved (testing mode)',
-            status: 'SUCCESS',
-            timestamp: new Date().toISOString(),
-          });
-        } else {
-          throw new Error('No authorization code in redirect');
-        }
-      } else {
-        throw new Error('No redirect location from authorization endpoint');
-      }
+      throw new Error(
+        'Interactive OAuth flow requires an InteractiveAuthHandler. ' +
+        'URL: ' + authorizationUrl.toString()
+      );
     }
   }
 
@@ -563,7 +560,6 @@ export class TestOAuthProvider implements OAuthClientProvider {
 // src/auth/index.ts
 
 import {
-  auth,
   discoverOAuthProtectedResourceMetadata,
   discoverAuthorizationServerMetadata,
 } from '@modelcontextprotocol/sdk/client/auth.js';
@@ -571,10 +567,11 @@ import { TestOAuthProvider, AuthCheckRecorder, InteractiveAuthHandler } from './
 import type { AuthConfig, TestCheck, PhaseResult } from '../types';
 
 /**
- * Run OAuth testing phase using SDK directly.
+ * Run OAuth discovery/validation phase.
  *
- * This does NOT reimplement OAuth - it uses the SDK's auth() function
- * and records checks via the TestOAuthProvider callbacks.
+ * This phase ONLY performs discovery and validation checks.
+ * It does NOT perform the actual auth flow - that's handled by the
+ * transport in the protocol phase, allowing proper 401 handling.
  */
 export async function runAuthPhase(
   serverUrl: string,
@@ -595,15 +592,15 @@ export async function runAuthPhase(
     },
   };
 
-  // For no-auth servers, just test connection
+  // For no-auth servers, just test basic connectivity
   if (authConfig.type === 'none') {
     return await testNoAuth(serverUrl, recorder, startTime, startMs, checks);
   }
 
-  // Build provider based on auth config
+  // Build provider - this will be passed to the transport later
   const provider = buildProvider(authConfig, recorder, options.interactiveHandler);
 
-  // === Test 1: PRM Discovery ===
+  // === Discovery Check 1: PRM ===
   let prmMetadata;
   try {
     prmMetadata = await discoverOAuthProtectedResourceMetadata(serverUrl);
@@ -625,14 +622,14 @@ export async function runAuthPhase(
     recorder.pushCheck({
       id: 'auth-prm-not-found',
       name: 'PRM Discovery',
-      description: 'Protected Resource Metadata not found (may use legacy auth)',
+      description: 'Protected Resource Metadata not found (may use legacy auth or require 401 challenge)',
       status: 'WARNING',
       timestamp: new Date().toISOString(),
       details: { error: error instanceof Error ? error.message : String(error) },
     });
   }
 
-  // === Test 2: AS Metadata Discovery ===
+  // === Discovery Check 2: AS Metadata ===
   const authServerUrl = prmMetadata?.authorization_servers?.[0] || new URL('/', serverUrl).toString();
 
   let asMetadata;
@@ -669,6 +666,29 @@ export async function runAuthPhase(
         timestamp: new Date().toISOString(),
         specReferences: [{ id: 'RFC-7636', url: 'https://www.rfc-editor.org/rfc/rfc7636.html' }],
       });
+
+      // Check DCR support
+      if (asMetadata.registration_endpoint) {
+        recorder.pushCheck({
+          id: 'auth-dcr-available',
+          name: 'DCR Endpoint',
+          description: 'Dynamic Client Registration endpoint available',
+          status: 'SUCCESS',
+          timestamp: new Date().toISOString(),
+          specReferences: [{ id: 'RFC-7591', url: 'https://www.rfc-editor.org/rfc/rfc7591.html' }],
+        });
+      }
+
+      // Check CIMD support
+      if (asMetadata.client_id_metadata_document_supported) {
+        recorder.pushCheck({
+          id: 'auth-cimd-supported',
+          name: 'CIMD Support',
+          description: 'Server supports Client ID Metadata Document',
+          status: 'SUCCESS',
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
   } catch (error) {
     recorder.pushCheck({
@@ -681,68 +701,28 @@ export async function runAuthPhase(
     });
   }
 
-  // === Test 3: Run Auth Flow Using SDK ===
-  try {
-    recorder.pushCheck({
-      id: 'auth-flow-starting',
-      name: 'Auth Flow',
-      description: 'Starting OAuth authorization flow',
-      status: 'INFO',
-      timestamp: new Date().toISOString(),
-    });
+  // NOTE: We do NOT call auth() here. The actual authentication
+  // will happen when the transport connects and receives a 401.
+  // The provider will record checks during that process.
 
-    let result = await auth(provider, {
-      serverUrl,
-      resourceMetadataUrl: prmMetadata ? new URL(prmMetadata.resource) : undefined,
-      scope: getScopes(authConfig)?.join(' '),
-    });
-
-    // Handle redirect case (interactive flow)
-    if (result === 'REDIRECT') {
-      const authCode = provider.getAuthorizationCode();
-      if (!authCode) {
-        throw new Error('No authorization code after redirect');
-      }
-
-      result = await auth(provider, {
-        serverUrl,
-        authorizationCode: authCode,
-        resourceMetadataUrl: prmMetadata ? new URL(prmMetadata.resource) : undefined,
-        scope: getScopes(authConfig)?.join(' '),
-      });
-    }
-
-    if (result === 'AUTHORIZED') {
-      recorder.pushCheck({
-        id: 'auth-flow-complete',
-        name: 'Auth Flow Complete',
-        description: 'Successfully completed OAuth authorization',
-        status: 'SUCCESS',
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-  } catch (error) {
-    recorder.pushCheck({
-      id: 'auth-flow-failed',
-      name: 'Auth Flow Failed',
-      description: 'OAuth authorization failed',
-      status: 'FAILURE',
-      timestamp: new Date().toISOString(),
-      errorMessage: error instanceof Error ? error.message : String(error),
-    });
-  }
+  recorder.pushCheck({
+    id: 'auth-discovery-complete',
+    name: 'Discovery Phase Complete',
+    description: 'Auth discovery complete. Actual auth will occur during connection.',
+    status: 'INFO',
+    timestamp: new Date().toISOString(),
+  });
 
   return {
     phase: 'auth',
-    name: 'Authentication Testing',
-    description: `Testing ${authConfig.type} authentication`,
+    name: 'Authentication Discovery',
+    description: `Discovered auth configuration for ${authConfig.type}`,
     startTime,
     endTime: new Date().toISOString(),
     durationMs: Date.now() - startMs,
     checks,
     summary: summarizeChecks(checks),
-    provider,
+    provider,  // Pass provider to protocol phase for use in transport
   };
 }
 
@@ -870,7 +850,7 @@ export async function runProtocolPhase(
     onProgress?: (check: TestCheck) => void;
     testCapabilities?: boolean;
   }
-): Promise<PhaseResult & { client?: Client }> {
+): Promise<PhaseResult & { client?: Client; transport?: StreamableHTTPClientTransport }> {
   const checks: TestCheck[] = [];
   const startTime = new Date().toISOString();
   const startMs = Date.now();
@@ -881,6 +861,7 @@ export async function runProtocolPhase(
   };
 
   let client: Client | undefined;
+  let transport: StreamableHTTPClientTransport | undefined;
 
   try {
     // Create client
@@ -898,7 +879,7 @@ export async function runProtocolPhase(
     });
 
     // Create transport with auth provider (SDK handles auth automatically)
-    const transport = new StreamableHTTPClientTransport(
+    transport = new StreamableHTTPClientTransport(
       new URL(serverUrl),
       { authProvider: provider }
     );
@@ -911,7 +892,7 @@ export async function runProtocolPhase(
       timestamp: new Date().toISOString(),
     });
 
-    // Connect
+    // Connect - this is where auth actually happens via 401 handling
     await client.connect(transport);
 
     pushCheck({
@@ -974,6 +955,20 @@ export async function runProtocolPhase(
     checks,
     summary: summarizeChecks(checks),
     client,
+    transport,
+    // Cleanup function for resource management
+    cleanup: async () => {
+      try {
+        if (transport) {
+          await transport.close();
+        }
+        if (client) {
+          await client.close();
+        }
+      } catch (e) {
+        // Ignore cleanup errors - just ensure resources are released
+      }
+    },
   };
 }
 
@@ -1747,12 +1742,14 @@ import { runAuthPhase } from './auth';
 import { runProtocolPhase } from './phases/protocol';
 import { runToolsPhase } from './phases/tools';
 import { runInteractionPhase } from './phases/interaction';
+import { createCLIAuthHandler } from './cli/interactive-auth';
 
 export async function runTests(
   configPath: string,
   options?: {
     anthropicApiKey?: string;
     onProgress?: (phase: string, check: TestCheck) => void;
+    interactive?: boolean;  // Enable interactive OAuth flow
   }
 ): Promise<TestReport> {
   const configRaw = await fs.readFile(configPath, 'utf-8');
@@ -1772,87 +1769,114 @@ export async function runTests(
 
   const startMs = Date.now();
 
-  // Phase 1: Auth
-  if (config.phases?.auth?.enabled !== false) {
-    const authResult = await runAuthPhase(
-      config.server.url,
-      config.auth,
-      {
-        recorder: {
-          pushCheck: (check) => options?.onProgress?.('auth', check),
-        },
-      }
-    );
-    report.phases.push(authResult);
+  // Track cleanup functions for resource management
+  const cleanupFns: Array<() => Promise<void>> = [];
 
-    // Phase 2: Protocol (using auth provider)
-    if (config.phases?.protocol?.enabled !== false) {
-      const protocolResult = await runProtocolPhase(
+  try {
+    // Phase 1: Auth (discovery only - actual auth happens in protocol phase)
+    if (config.phases?.auth?.enabled !== false) {
+      // Create interactive handler if needed
+      const interactiveHandler = options?.interactive
+        ? createCLIAuthHandler()
+        : undefined;
+
+      const authResult = await runAuthPhase(
         config.server.url,
-        authResult.provider,
+        config.auth,
         {
-          onProgress: (check) => options?.onProgress?.('protocol', check),
-          testCapabilities: config.phases?.protocol?.testCapabilities,
+          recorder: {
+            pushCheck: (check) => options?.onProgress?.('auth', check),
+          },
+          interactiveHandler,
         }
       );
-      report.phases.push(protocolResult);
+      report.phases.push(authResult);
+      if (authResult.cleanup) cleanupFns.push(authResult.cleanup);
 
-      // Phase 3: Tools
-      if (config.phases?.tools?.enabled !== false && protocolResult.client) {
-        const toolsResult = await runToolsPhase(
-          protocolResult.client,
+      // Phase 2: Protocol (using auth provider - auth happens here via 401)
+      if (config.phases?.protocol?.enabled !== false) {
+        const protocolResult = await runProtocolPhase(
+          config.server.url,
+          authResult.provider,
           {
-            onProgress: (check) => options?.onProgress?.('tools', check),
-            analyzeTokenCounts: config.phases?.tools?.analyzeTokenCounts,
+            onProgress: (check) => options?.onProgress?.('protocol', check),
+            testCapabilities: config.phases?.protocol?.testCapabilities,
           }
         );
-        report.phases.push(toolsResult);
-      }
+        report.phases.push(protocolResult);
+        if (protocolResult.cleanup) cleanupFns.push(protocolResult.cleanup);
 
-      // Phase 4: Interaction
-      const prompts = config.phases?.interaction?.prompts || [];
-      if (config.phases?.interaction?.enabled !== false && prompts.length > 0 && protocolResult.client) {
-        const anthropicApiKey = options?.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
-        if (!anthropicApiKey) {
-          throw new Error('ANTHROPIC_API_KEY required for interaction testing');
+        // Phase 3: Tools
+        if (config.phases?.tools?.enabled !== false && protocolResult.client) {
+          const toolsResult = await runToolsPhase(
+            protocolResult.client,
+            {
+              onProgress: (check) => options?.onProgress?.('tools', check),
+              analyzeTokenCounts: config.phases?.tools?.analyzeTokenCounts,
+            }
+          );
+          report.phases.push(toolsResult);
+          if (toolsResult.cleanup) cleanupFns.push(toolsResult.cleanup);
         }
 
-        const interactionResult = await runInteractionPhase(
-          protocolResult.client,
-          prompts,
-          {
-            anthropicApiKey,
-            transcriptDir: config.output?.transcriptDir || './transcripts',
-            onProgress: (check) => options?.onProgress?.('interaction', check),
-            safetyReviewModel: config.phases?.interaction?.safetyReviewModel,
-            qualityReviewModel: config.phases?.interaction?.qualityReviewModel,
+        // Phase 4: Interaction
+        const prompts = config.phases?.interaction?.prompts || [];
+        if (config.phases?.interaction?.enabled !== false && prompts.length > 0 && protocolResult.client) {
+          const anthropicApiKey = options?.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
+          if (!anthropicApiKey) {
+            throw new Error('ANTHROPIC_API_KEY required for interaction testing');
           }
-        );
-        report.phases.push(interactionResult);
+
+          const interactionResult = await runInteractionPhase(
+            protocolResult.client,
+            prompts,
+            {
+              anthropicApiKey,
+              transcriptDir: config.output?.transcriptDir || './transcripts',
+              onProgress: (check) => options?.onProgress?.('interaction', check),
+              safetyReviewModel: config.phases?.interaction?.safetyReviewModel,
+              qualityReviewModel: config.phases?.interaction?.qualityReviewModel,
+            }
+          );
+          report.phases.push(interactionResult);
+          if (interactionResult.cleanup) cleanupFns.push(interactionResult.cleanup);
+        }
+      }
+    }
+
+    // Finalize report
+    report.endTime = new Date().toISOString();
+    report.totalDurationMs = Date.now() - startMs;
+
+    for (const phase of report.phases) {
+      report.summary.totalChecks += phase.summary.total;
+      report.summary.passed += phase.summary.success;
+      report.summary.failed += phase.summary.failure;
+      report.summary.warnings += phase.summary.warning;
+      report.summary.skipped += phase.summary.skipped;
+    }
+
+    report.overallStatus = report.summary.failed > 0 ? 'FAIL' :
+                           report.summary.warnings > 0 ? 'WARN' : 'PASS';
+
+    // Save report
+    const reportPath = config.output?.reportPath || './test-report.json';
+    await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
+
+    return report;
+
+  } finally {
+    // Always run cleanup, even if tests fail
+    // Run in reverse order for proper teardown (last opened = first closed)
+    for (const cleanup of cleanupFns.reverse()) {
+      try {
+        await cleanup();
+      } catch (e) {
+        // Log but don't throw - we want to clean up everything
+        console.error('Cleanup error:', e);
       }
     }
   }
-
-  // Finalize report
-  report.endTime = new Date().toISOString();
-  report.totalDurationMs = Date.now() - startMs;
-
-  for (const phase of report.phases) {
-    report.summary.totalChecks += phase.summary.total;
-    report.summary.passed += phase.summary.success;
-    report.summary.failed += phase.summary.failure;
-    report.summary.warnings += phase.summary.warning;
-    report.summary.skipped += phase.summary.skipped;
-  }
-
-  report.overallStatus = report.summary.failed > 0 ? 'FAIL' :
-                         report.summary.warnings > 0 ? 'WARN' : 'PASS';
-
-  // Save report
-  const reportPath = config.output?.reportPath || './test-report.json';
-  await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
-
-  return report;
 }
 ```
 
@@ -1875,22 +1899,25 @@ Usage:
 
 Options:
   --anthropic-key <key>  Anthropic API key (or set ANTHROPIC_API_KEY)
+  --interactive          Enable interactive OAuth flow (opens browser for consent)
   --verbose              Show detailed progress
   --help                 Show this help
 
 Example:
-  mcp-test ./test-config.json --verbose
+  mcp-test ./test-config.json --verbose --interactive
 `);
   process.exit(0);
 }
 
 const configPath = args[0];
 const verbose = args.includes('--verbose');
+const interactive = args.includes('--interactive');
 const keyIndex = args.indexOf('--anthropic-key');
 const anthropicApiKey = keyIndex >= 0 ? args[keyIndex + 1] : undefined;
 
 runTests(configPath, {
   anthropicApiKey,
+  interactive,
   onProgress: verbose ? (phase, check) => {
     const icon = check.status === 'SUCCESS' ? '✓' :
                  check.status === 'FAILURE' ? '✗' :
@@ -1910,6 +1937,103 @@ runTests(configPath, {
     console.error('Test runner failed:', error);
     process.exit(1);
   });
+```
+
+### 7.2 CLI Interactive Auth Handler
+
+```typescript
+// src/cli/interactive-auth.ts
+
+import { InteractiveAuthHandler } from '../auth/test-oauth-provider';
+import { createServer, type Server } from 'http';
+import open from 'open';  // npm package to open browser
+
+/**
+ * CLI interactive auth handler that:
+ * 1. Opens the authorization URL in the user's browser
+ * 2. Spins up a temporary HTTP server to receive the callback
+ * 3. Returns the authorization code
+ */
+export function createCLIAuthHandler(
+  callbackPort: number = 3456
+): InteractiveAuthHandler {
+  let pendingResolve: ((value: { code: string; state?: string }) => void) | null = null;
+  let pendingReject: ((error: Error) => void) | null = null;
+  let server: Server | null = null;
+
+  return {
+    async onAuthorizationRequired(authorizationUrl: URL): Promise<void> {
+      console.log('\n🔐 OAuth Authorization Required');
+      console.log('Opening browser for consent...');
+      console.log(`URL: ${authorizationUrl.toString()}\n`);
+
+      // Open browser
+      await open(authorizationUrl.toString());
+
+      // Start callback server
+      server = createServer((req, res) => {
+        const url = new URL(req.url || '/', `http://localhost:${callbackPort}`);
+
+        if (url.pathname === '/oauth/callback') {
+          const code = url.searchParams.get('code');
+          const state = url.searchParams.get('state');
+          const error = url.searchParams.get('error');
+
+          if (error) {
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(`
+              <html>
+                <body style="font-family: system-ui; padding: 40px; text-align: center;">
+                  <h1 style="color: #dc2626;">Authorization Failed</h1>
+                  <p>Error: ${error}</p>
+                  <p>You can close this window.</p>
+                </body>
+              </html>
+            `);
+            pendingReject?.(new Error(error));
+          } else if (code) {
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(`
+              <html>
+                <body style="font-family: system-ui; padding: 40px; text-align: center;">
+                  <h1 style="color: #16a34a;">Authorization Successful</h1>
+                  <p>You can close this window and return to the terminal.</p>
+                </body>
+              </html>
+            `);
+            pendingResolve?.({ code, state: state || undefined });
+          } else {
+            res.writeHead(400, { 'Content-Type': 'text/html' });
+            res.end('<h1>Invalid Callback</h1>');
+          }
+
+          // Cleanup server after response
+          setTimeout(() => server?.close(), 100);
+        } else {
+          res.writeHead(404);
+          res.end('Not Found');
+        }
+      });
+
+      server.listen(callbackPort);
+      console.log(`Listening for callback on http://localhost:${callbackPort}/oauth/callback`);
+      console.log('Waiting for you to complete authorization in the browser...\n');
+    },
+
+    waitForCallback(): Promise<{ code: string; state?: string }> {
+      return new Promise((resolve, reject) => {
+        pendingResolve = resolve;
+        pendingReject = reject;
+
+        // Timeout after 5 minutes
+        setTimeout(() => {
+          reject(new Error('OAuth callback timeout (5 minutes)'));
+          server?.close();
+        }, 5 * 60 * 1000);
+      });
+    },
+  };
+}
 ```
 
 ---
