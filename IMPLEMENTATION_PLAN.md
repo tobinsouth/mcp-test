@@ -2064,66 +2064,15 @@ web/
     └── runner.ts             # Server-side runner wrapper
 ```
 
-### 8.2 OAuth Callback Handler
+### 8.2 Cross-Process OAuth Session Management
 
-```typescript
-// web/app/api/oauth/callback/route.ts
-
-import { NextRequest, NextResponse } from 'next/server';
-
-// Global map of pending auth sessions
-const pendingAuthSessions = new Map<string, {
-  resolve: (value: { code: string; state?: string }) => void;
-  reject: (error: Error) => void;
-}>();
-
-export function registerAuthSession(
-  state: string,
-  resolve: (value: { code: string; state?: string }) => void,
-  reject: (error: Error) => void
-): void {
-  pendingAuthSessions.set(state, { resolve, reject });
-}
-
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const code = searchParams.get('code');
-  const state = searchParams.get('state');
-  const error = searchParams.get('error');
-
-  if (error) {
-    const session = state ? pendingAuthSessions.get(state) : null;
-    if (session) {
-      session.reject(new Error(error));
-      pendingAuthSessions.delete(state!);
-    }
-    return NextResponse.redirect(new URL('/test?error=' + error, request.url));
-  }
-
-  if (code && state) {
-    const session = pendingAuthSessions.get(state);
-    if (session) {
-      session.resolve({ code, state });
-      pendingAuthSessions.delete(state);
-    }
-    return NextResponse.redirect(new URL('/test?success=true', request.url));
-  }
-
-  return NextResponse.redirect(new URL('/test?error=invalid_callback', request.url));
-}
-```
-
----
-
-## 8.3 Cross-Process OAuth Session Management
-
-### The Problem
+#### The Problem
 
 The OAuth callback flow in the web platform has a critical architectural challenge:
 
 1. **Serverless Reality**: Next.js on Vercel/similar runs each request in isolated serverless functions with no shared memory
 2. **Process Isolation**: The test runner may run as a separate process (background job, worker, etc.) from the web server receiving OAuth callbacks
-3. **Current Section 8.2 Limitation**: Uses in-memory `pendingAuthSessions` Map which cannot work across process/instance boundaries
+3. **No Shared Memory**: In-memory Maps cannot work across process/instance boundaries
 
 ### Solution: Session Store + Polling Architecture
 
@@ -2165,7 +2114,7 @@ The OAuth callback flow in the web platform has a critical architectural challen
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 8.3.1 Session Store Interface
+#### 8.2.1 Session Store Interface
 
 ```typescript
 // src/auth/session-store.ts
@@ -2223,7 +2172,7 @@ export interface AuthSessionStore {
 }
 ```
 
-### 8.3.2 State Parameter Encoding
+#### 8.2.2 State Parameter Encoding
 
 The OAuth `state` parameter serves dual purposes:
 1. **CSRF Protection**: Original PKCE-generated state
@@ -2261,7 +2210,7 @@ export function decodeState(encodedState: string): { runId: string; originalStat
 }
 ```
 
-### 8.3.3 Web Interactive Auth Handler
+#### 8.2.3 Web Interactive Auth Handler
 
 For the web platform, the `InteractiveAuthHandler` works differently from CLI:
 - It stores the session, modifies the state, and returns the URL
@@ -2357,7 +2306,7 @@ export function createWebAuthHandler(
 }
 ```
 
-### 8.3.4 Updated OAuth Callback API Route
+#### 8.2.4 OAuth Callback API Route
 
 ```typescript
 // web/app/api/oauth/callback/route.ts
@@ -2476,7 +2425,7 @@ function escapeHtml(str: string): string {
 }
 ```
 
-### 8.3.5 Polling API Route
+#### 8.2.5 Polling API Route
 
 ```typescript
 // web/app/api/auth/poll/[runId]/route.ts
@@ -2513,7 +2462,7 @@ export async function GET(
 }
 ```
 
-### 8.3.6 Session Store Implementations
+#### 8.2.6 Session Store Implementations
 
 #### In-Memory (Development Only)
 
@@ -2664,7 +2613,7 @@ export class RedisSessionStore implements AuthSessionStore {
 }
 ```
 
-### 8.3.7 Session Store Factory
+#### 8.2.7 Session Store Factory
 
 ```typescript
 // web/lib/session-store.ts
@@ -2702,7 +2651,7 @@ export function getSessionStore(): AuthSessionStore {
 }
 ```
 
-### 8.3.8 Web Platform Runner Integration
+#### 8.2.8 Web Platform Runner Integration
 
 Update the web platform's runner wrapper to use the web auth handler:
 
@@ -2753,7 +2702,7 @@ export async function runTestsForWeb(options: WebRunnerOptions) {
 }
 ```
 
-### 8.3.9 Environment Variables
+#### 8.2.9 Environment Variables
 
 Add to `.env.example`:
 
@@ -2768,83 +2717,7 @@ UPSTASH_REDIS_REST_TOKEN=xxx
 
 ---
 
-## 9. Code Patterns from SDK
-
-### 9.1 SDK Functions We Use Directly
-
-```typescript
-// These are imported from the SDK - we don't reimplement them
-import {
-  auth,
-  discoverOAuthProtectedResourceMetadata,
-  discoverAuthorizationServerMetadata,
-  extractWWWAuthenticateParams,
-  UnauthorizedError,
-} from '@modelcontextprotocol/sdk/client/auth.js';
-
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-```
-
-### 9.2 Pattern: Provider with Built-in Auth
-
-```typescript
-// Simplest pattern - SDK handles everything
-const transport = new StreamableHTTPClientTransport(
-  new URL(serverUrl),
-  { authProvider: testOAuthProvider }  // SDK manages auth automatically
-);
-await client.connect(transport);
-```
-
-### 9.3 Pattern: Explicit Discovery for Checks
-
-```typescript
-// For detailed testing, call discovery explicitly before auth()
-const prm = await discoverOAuthProtectedResourceMetadata(serverUrl);
-recordCheck('PRM found', prm);
-
-const as = await discoverAuthorizationServerMetadata(prm.authorization_servers[0]);
-recordCheck('AS metadata found', as);
-
-// Then use auth() which will use cached metadata
-await auth(provider, { serverUrl });
-```
-
----
-
-## 10. Implementation Roadmap
-
-### Phase 1: Core Test Runner (Week 1)
-- [ ] Set up Bun project with TypeScript
-- [ ] Implement types and config schema
-- [ ] Implement `TestOAuthProvider`
-- [ ] Implement auth phase using SDK's `auth()`
-- [ ] Implement protocol phase
-- [ ] Basic CLI
-
-### Phase 2: Tool & Interaction Testing (Week 2)
-- [ ] Implement tool analysis phase
-- [ ] Implement Claude interaction loop
-- [ ] Implement transcript recording
-- [ ] Implement basic evaluation
-
-### Phase 3: LLM Review & Reports (Week 3)
-- [ ] Implement safety review
-- [ ] Implement quality review
-- [ ] Report generation (JSON, HTML)
-- [ ] Polish CLI output
-
-### Phase 4: Web Platform (Week 4)
-- [ ] Next.js project setup
-- [ ] Config editor UI
-- [ ] Real-time progress via SSE
-- [ ] OAuth callback handling
-- [ ] Transcript viewer
-
----
-
-## Summary
+## 9. Summary
 
 This implementation leverages the MCP TypeScript SDK for all OAuth logic:
 
