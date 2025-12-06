@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "server": {
+    "url": "http://localhost:3000/mcp",
+    "name": "Test MCP Server",
+    "transport": "streamable-http"
+  },
+  "auth": {
+    "type": "none"
+  },
+  "phases": {
+    "auth": {
+      "enabled": true
+    },
+    "protocol": {
+      "enabled": true,
+      "testCapabilities": true
+    },
+    "tools": {
+      "enabled": true,
+      "analyzeTokenCounts": true
+    },
+    "interaction": {
+      "enabled": false,
+      "prompts": []
+    }
+  },
+  "output": {
+    "transcriptDir": "./transcripts",
+    "reportPath": "./test-report.json",
+    "format": "json"
+  }
+}

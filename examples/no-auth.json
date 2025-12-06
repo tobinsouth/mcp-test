@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "server": {
+    "url": "http://localhost:3001/mcp",
+    "name": "My MCP Server"
+  },
+  "auth": {
+    "type": "none"
+  },
+  "phases": {
+    "interaction": {
+      "prompts": [
+        {
+          "id": "basic-tool-test",
+          "name": "Basic Tool Usage",
+          "prompt": "List the available tools and then use the echo tool with message 'hello'",
+          "expectations": {
+            "expectedToolCalls": [
+              { "toolName": "echo", "argumentsContain": { "message": "hello" } }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

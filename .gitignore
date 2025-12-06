@@ -87,6 +87,11 @@ Desktop.ini
 # Bun
 .bun/
 bun.lockb
+bun.lock
+
+# Test outputs
+test-report.json
+transcripts/
 
 # Package manager lock files (keep the one you use, remove others if needed)
 # package-lock.json
