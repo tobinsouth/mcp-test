@@ -6,7 +6,20 @@ A comprehensive QA testing platform for MCP servers with two components:
 1. **Bun-based Test Runner** - Headless test execution with JSON configuration
 2. **Next.js Web Platform** - Interactive UI for configuration and real-time monitoring
 
-**Key Design Principle:** Leverage the MCP TypeScript SDK as much as possible. We implement `OAuthClientProvider` for state management and observability, but use the SDK's `auth()` function for all OAuth logic.
+**Key Design Principles:**
+- Leverage the MCP TypeScript SDK as much as possible
+- Implement `OAuthClientProvider` for state management and observability, but use the SDK's `auth()` function for all OAuth logic
+- Monorepo architecture with clear separation of concerns (see [FOLDER_STRUCTURE.md](./FOLDER_STRUCTURE.md))
+
+### Package Overview
+
+| Package | Name | Description |
+|---------|------|-------------|
+| `packages/types` | `@mcp-qa/types` | Shared TypeScript types and Zod schemas |
+| `packages/core` | `@mcp-qa/core` | Auth providers, session stores, utilities |
+| `packages/runner` | `@mcp-qa/runner` | Main test runner with all phases |
+| `packages/cli` | `@mcp-qa/cli` | CLI interface for standalone use |
+| `packages/web` | `@mcp-qa/web` | Next.js interactive frontend |
 
 ---
 
@@ -15,7 +28,7 @@ A comprehensive QA testing platform for MCP servers with two components:
 ### 1.1 Input JSON Schema
 
 ```typescript
-// src/types/config.ts
+// packages/types/src/config/test-config.ts
 
 import { z } from 'zod';
 
@@ -203,7 +216,7 @@ export type TestPrompt = z.infer<typeof TestPromptSchema>;
 ### 1.3 Core Types
 
 ```typescript
-// src/types/index.ts
+// packages/types/src/results/index.ts
 
 export type CheckStatus = 'SUCCESS' | 'FAILURE' | 'WARNING' | 'SKIPPED' | 'INFO';
 
@@ -264,32 +277,50 @@ export interface TestReport {
 
 ### 1.4 Project Structure
 
+> **Note:** For the complete monorepo architecture, see [FOLDER_STRUCTURE.md](./FOLDER_STRUCTURE.md).
+
 ```
-src/
-├── index.ts                      # CLI entry point
-├── runner.ts                     # Main test runner orchestration
-├── types/
-│   ├── index.ts                  # Core types
-│   └── config.ts                 # JSON schema definitions
-├── auth/
-│   ├── index.ts                  # Auth phase runner
-│   └── test-oauth-provider.ts    # OAuthClientProvider with check recording
-├── phases/
-│   ├── protocol/
-│   │   └── index.ts              # Protocol conformance phase
-│   ├── tools/
-│   │   └── index.ts              # Tool quality analysis phase
-│   └── interaction/
-│       ├── index.ts              # Claude interaction phase
-│       ├── transcript.ts         # Transcript recording
-│       ├── safety-review.ts      # LLM safety review
-│       └── quality-review.ts     # LLM quality review
-├── client/
-│   └── index.ts                  # MCP client factory with auth
-├── utils/
-│   ├── tokens.ts                 # Token counting utilities
-│   └── report.ts                 # Report generation
-└── web/                          # Next.js web platform (separate package)
+packages/
+├── types/                        # @mcp-qa/types - Shared types and Zod schemas
+│   └── src/
+│       ├── config/               # Configuration schemas
+│       │   ├── auth.ts
+│       │   ├── phases.ts
+│       │   └── test-config.ts
+│       ├── results/              # Test result types
+│       │   ├── check.ts
+│       │   ├── phase-result.ts
+│       │   └── report.ts
+│       └── interaction/          # Transcript and expectation types
+│
+├── core/                         # @mcp-qa/core - Shared utilities
+│   └── src/
+│       ├── auth/
+│       │   ├── provider/         # TestOAuthProvider implementation
+│       │   ├── handlers/         # CLI and Web auth handlers
+│       │   └── session/          # Session stores (memory, redis)
+│       ├── client/               # MCP client factory
+│       └── utils/                # Token counting, report helpers
+│
+├── runner/                       # @mcp-qa/runner - Main test runner
+│   └── src/
+│       ├── phases/
+│       │   ├── auth/             # Auth discovery phase
+│       │   ├── protocol/         # Protocol conformance phase
+│       │   ├── tools/            # Tool quality analysis phase
+│       │   └── interaction/      # Claude interaction phase
+│       └── runner.ts             # Main orchestration
+│
+├── cli/                          # @mcp-qa/cli - CLI interface
+│   └── src/
+│       ├── commands/             # CLI commands
+│       └── output/               # Progress display utilities
+│
+└── web/                          # @mcp-qa/web - Next.js frontend
+    ├── app/
+    │   └── api/                  # API routes (run, status, oauth)
+    ├── components/               # React components
+    └── lib/                      # Server-side utilities
 ```
 
 ---
@@ -317,7 +348,7 @@ src/
 ### 2.3 TestOAuthProvider Implementation
 
 ```typescript
-// src/auth/test-oauth-provider.ts
+// packages/core/src/auth/provider/test-oauth-provider.ts
 
 import {
   OAuthClientProvider,
@@ -325,7 +356,7 @@ import {
   OAuthClientInformationMixed,
   OAuthTokens
 } from '@modelcontextprotocol/sdk/client/auth.js';
-import type { TestCheck } from '../types';
+import type { TestCheck } from '@mcp-qa/types';
 
 export interface AuthCheckRecorder {
   pushCheck(check: TestCheck): void;
@@ -557,14 +588,14 @@ export class TestOAuthProvider implements OAuthClientProvider {
 ### 2.4 Auth Phase Runner
 
 ```typescript
-// src/auth/index.ts
+// packages/runner/src/phases/auth/auth-phase.ts
 
 import {
   discoverOAuthProtectedResourceMetadata,
   discoverAuthorizationServerMetadata,
 } from '@modelcontextprotocol/sdk/client/auth.js';
-import { TestOAuthProvider, AuthCheckRecorder, InteractiveAuthHandler } from './test-oauth-provider';
-import type { AuthConfig, TestCheck, PhaseResult } from '../types';
+import { TestOAuthProvider, AuthCheckRecorder, InteractiveAuthHandler } from '@mcp-qa/core/auth';
+import type { AuthConfig, TestCheck, PhaseResult } from '@mcp-qa/types';
 
 /**
  * Run OAuth discovery/validation phase.
@@ -836,12 +867,12 @@ function summarizeChecks(checks: TestCheck[]) {
 ## 3. Phase 2: Protocol Conformance Testing
 
 ```typescript
-// src/phases/protocol/index.ts
+// packages/runner/src/phases/protocol/protocol-phase.ts
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { TestCheck, PhaseResult } from '../../types';
-import type { TestOAuthProvider } from '../../auth/test-oauth-provider';
+import type { TestCheck, PhaseResult } from '@mcp-qa/types';
+import type { TestOAuthProvider } from '@mcp-qa/core/auth';
 
 export async function runProtocolPhase(
   serverUrl: string,
@@ -988,12 +1019,12 @@ function summarizeChecks(checks: TestCheck[]) {
 ## 4. Phase 3: Tool Quality Analysis
 
 ```typescript
-// src/phases/tools/index.ts
+// packages/runner/src/phases/tools/tools-phase.ts
 
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
-import type { TestCheck, PhaseResult } from '../../types';
-import { countTokens } from '../../utils/tokens';
+import type { TestCheck, PhaseResult } from '@mcp-qa/types';
+import { countTokens } from '@mcp-qa/core/utils';
 
 export interface ToolMetrics {
   name: string;
@@ -1152,11 +1183,11 @@ function summarizeChecks(checks: TestCheck[]) {
 ## 5. Phase 4: Claude-Powered Interaction Testing
 
 ```typescript
-// src/phases/interaction/index.ts
+// packages/runner/src/phases/interaction/interaction-phase.ts
 
 import Anthropic from '@anthropic-ai/sdk';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import type { TestCheck, PhaseResult, TestPrompt } from '../../types';
+import type { TestCheck, PhaseResult, TestPrompt } from '@mcp-qa/types';
 import { TranscriptRecorder } from './transcript';
 import { reviewSafety } from './safety-review';
 import { reviewQuality } from './quality-review';
@@ -1446,7 +1477,7 @@ function summarizeChecks(checks: TestCheck[]) {
 ### 6.1 Transcript Recorder
 
 ```typescript
-// src/phases/interaction/transcript.ts
+// packages/runner/src/phases/interaction/transcript.ts
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -1536,10 +1567,10 @@ export class TranscriptRecorder {
 ### 6.2 Safety Review
 
 ```typescript
-// src/phases/interaction/safety-review.ts
+// packages/runner/src/phases/interaction/safety-review.ts
 
 import type Anthropic from '@anthropic-ai/sdk';
-import type { TestCheck } from '../../types';
+import type { TestCheck } from '@mcp-qa/types';
 
 interface SafetyPolicy {
   id: string;
@@ -1628,10 +1659,10 @@ For each policy, respond in JSON format:
 ### 6.3 Quality Review
 
 ```typescript
-// src/phases/interaction/quality-review.ts
+// packages/runner/src/phases/interaction/quality-review.ts
 
 import type Anthropic from '@anthropic-ai/sdk';
-import type { TestCheck } from '../../types';
+import type { TestCheck } from '@mcp-qa/types';
 
 export async function reviewQuality(
   transcript: any,
@@ -1709,7 +1740,7 @@ Respond in JSON format:
 ### 6.4 Token Counting
 
 ```typescript
-// src/utils/tokens.ts
+// packages/core/src/utils/tokens.ts
 
 /**
  * Approximate token count using cl100k_base-like estimation.
@@ -1733,17 +1764,15 @@ export function countTokens(text: string): number {
 ## 7. Main Test Runner
 
 ```typescript
-// src/runner.ts
+// packages/runner/src/runner.ts
 
 import * as fs from 'fs/promises';
-import { TestConfigSchema, type TestConfig } from './types/config';
-import type { TestReport, PhaseResult, TestCheck } from './types';
-import { runAuthPhase } from './auth';
-import { runProtocolPhase } from './phases/protocol';
-import { runToolsPhase } from './phases/tools';
-import { runInteractionPhase } from './phases/interaction';
-import { createCLIAuthHandler } from './cli/interactive-auth';
-import type { InteractiveAuthHandler } from './auth/test-oauth-provider';
+import { TestConfigSchema, type TestConfig, type TestReport, type PhaseResult, type TestCheck } from '@mcp-qa/types';
+import { createCLIAuthHandler, type InteractiveAuthHandler } from '@mcp-qa/core/auth';
+import { runAuthPhase } from './phases/auth/auth-phase';
+import { runProtocolPhase } from './phases/protocol/protocol-phase';
+import { runToolsPhase } from './phases/tools/tools-phase';
+import { runInteractionPhase } from './phases/interaction/interaction-phase';
 
 export async function runTests(
   configPath: string,
@@ -1886,10 +1915,10 @@ export async function runTests(
 ### 7.1 CLI Entry Point
 
 ```typescript
-// src/index.ts
+// packages/cli/src/bin.ts
 #!/usr/bin/env bun
 
-import { runTests } from './runner';
+import { runTests } from '@mcp-qa/runner';
 
 const args = process.argv.slice(2);
 
@@ -1945,9 +1974,9 @@ runTests(configPath, {
 ### 7.2 CLI Interactive Auth Handler
 
 ```typescript
-// src/cli/interactive-auth.ts
+// packages/core/src/auth/handlers/cli-handler.ts
 
-import { InteractiveAuthHandler } from '../auth/test-oauth-provider';
+import type { InteractiveAuthHandler } from '../provider/test-oauth-provider';
 import { createServer, type Server } from 'http';
 import open from 'open';  // npm package to open browser
 
@@ -2045,8 +2074,10 @@ export function createCLIAuthHandler(
 
 ### 8.1 Architecture Overview
 
+> **Note:** For detailed web package structure, see [packages/web/README.md](./packages/web/README.md).
+
 ```
-web/
+packages/web/
 ├── app/
 │   ├── page.tsx              # Dashboard
 │   ├── test/
@@ -2055,13 +2086,15 @@ web/
 │       ├── run/route.ts      # Start test run
 │       ├── status/route.ts   # SSE for progress
 │       └── oauth/
-│           └── callback/route.ts  # OAuth callback handler
+│           ├── callback/route.ts    # OAuth callback handler
+│           └── poll/[runId]/route.ts  # Poll for callback status
 ├── components/
-│   ├── ConfigEditor.tsx      # JSON config editor
-│   ├── CheckList.tsx         # Real-time check list
-│   └── TranscriptViewer.tsx  # Transcript viewer
+│   ├── config/               # Configuration editor components
+│   ├── results/              # Result display components
+│   └── transcript/           # Transcript viewer
 └── lib/
-    └── runner.ts             # Server-side runner wrapper
+    ├── runner.ts             # Server-side runner wrapper
+    └── session-store.ts      # Session store factory
 ```
 
 ### 8.2 Cross-Process OAuth Session Management
@@ -2117,7 +2150,7 @@ The OAuth callback flow in the web platform has a critical architectural challen
 #### 8.2.1 Session Store Interface
 
 ```typescript
-// src/auth/session-store.ts
+// packages/core/src/auth/session/types.ts
 
 export interface AuthSession {
   runId: string;
@@ -2179,7 +2212,7 @@ The OAuth `state` parameter serves dual purposes:
 2. **Session Tracking**: Our `runId` for cross-process communication
 
 ```typescript
-// src/auth/state-encoding.ts
+// packages/core/src/auth/state-encoding.ts
 
 const STATE_PREFIX = 'mcp';
 const STATE_SEPARATOR = ':';
@@ -2218,11 +2251,11 @@ For the web platform, the `InteractiveAuthHandler` works differently from CLI:
 - It polls the session store for callback completion
 
 ```typescript
-// src/auth/web-auth-handler.ts
+// packages/core/src/auth/handlers/web-handler.ts
 
-import { InteractiveAuthHandler } from './test-oauth-provider';
-import { AuthSessionStore } from './session-store';
-import { encodeState, decodeState } from './state-encoding';
+import type { InteractiveAuthHandler } from '../provider/test-oauth-provider';
+import type { AuthSessionStore } from '../session/types';
+import { encodeState } from '../state-encoding';
 
 /**
  * Web platform interactive auth handler.
@@ -2309,11 +2342,11 @@ export function createWebAuthHandler(
 #### 8.2.4 OAuth Callback API Route
 
 ```typescript
-// web/app/api/oauth/callback/route.ts
+// packages/web/app/api/oauth/callback/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionStore } from '@/lib/session-store';
-import { decodeState } from '@/lib/state-encoding';
+import { decodeState } from '@mcp-qa/core/auth';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -2428,7 +2461,7 @@ function escapeHtml(str: string): string {
 #### 8.2.5 Polling API Route
 
 ```typescript
-// web/app/api/auth/poll/[runId]/route.ts
+// packages/web/app/api/oauth/poll/[runId]/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionStore } from '@/lib/session-store';
@@ -2467,9 +2500,9 @@ export async function GET(
 #### In-Memory (Development Only)
 
 ```typescript
-// src/auth/stores/memory-store.ts
+// packages/core/src/auth/session/memory-store.ts
 
-import { AuthSession, AuthSessionStore } from '../session-store';
+import type { AuthSession, AuthSessionStore } from './types';
 
 /**
  * In-memory session store for development/testing.
@@ -2535,10 +2568,10 @@ export class MemorySessionStore implements AuthSessionStore {
 #### Redis/Upstash (Production)
 
 ```typescript
-// src/auth/stores/redis-store.ts
+// packages/core/src/auth/session/redis-store.ts
 
 import { Redis } from '@upstash/redis';  // Or ioredis for self-hosted
-import { AuthSession, AuthSessionStore } from '../session-store';
+import type { AuthSession, AuthSessionStore } from './types';
 
 /**
  * Redis-backed session store for production deployments.
@@ -2616,11 +2649,10 @@ export class RedisSessionStore implements AuthSessionStore {
 #### 8.2.7 Session Store Factory
 
 ```typescript
-// web/lib/session-store.ts
+// packages/web/lib/session-store.ts
 
-import { AuthSessionStore } from '@/src/auth/session-store';
-import { MemorySessionStore } from '@/src/auth/stores/memory-store';
-import { RedisSessionStore } from '@/src/auth/stores/redis-store';
+import type { AuthSessionStore } from '@mcp-qa/core/auth';
+import { MemorySessionStore, RedisSessionStore } from '@mcp-qa/core/auth';
 import { Redis } from '@upstash/redis';
 
 let sessionStore: AuthSessionStore | null = null;
@@ -2656,10 +2688,10 @@ export function getSessionStore(): AuthSessionStore {
 Update the web platform's runner wrapper to use the web auth handler:
 
 ```typescript
-// web/lib/runner.ts
+// packages/web/lib/runner.ts
 
-import { runTests } from '@/src/runner';
-import { createWebAuthHandler } from '@/src/auth/web-auth-handler';
+import { runTests } from '@mcp-qa/runner';
+import { createWebAuthHandler } from '@mcp-qa/core/auth';
 import { getSessionStore } from './session-store';
 
 export interface WebRunnerOptions {
@@ -2719,11 +2751,31 @@ UPSTASH_REDIS_REST_TOKEN=xxx
 
 ## 9. Summary
 
-This implementation leverages the MCP TypeScript SDK for all OAuth logic:
+### Architecture Highlights
 
+This implementation uses a **monorepo architecture** with five packages:
+
+1. **`@mcp-qa/types`** - Zero-dependency types shared across all packages
+2. **`@mcp-qa/core`** - Shared runtime utilities (auth, client, utilities)
+3. **`@mcp-qa/runner`** - Main test runner with pluggable phases
+4. **`@mcp-qa/cli`** - Thin CLI wrapper for standalone use
+5. **`@mcp-qa/web`** - Next.js frontend for interactive testing
+
+### Key Technical Decisions
+
+**OAuth/Auth:** Leverages the MCP TypeScript SDK for all OAuth logic:
 - **`TestOAuthProvider`** implements `OAuthClientProvider` for state management with check recording
 - **`auth()`** handles the complete OAuth flow
 - **`discoverOAuthProtectedResourceMetadata()`** and **`discoverAuthorizationServerMetadata()`** are called explicitly to record discovery checks
 - **`StreamableHTTPClientTransport`** with `authProvider` handles automatic auth
 
 We build ~200 lines of auth code instead of ~730 lines, focusing on observability rather than reimplementation.
+
+**Extensibility:** New test runners can be added as separate packages that import `@mcp-qa/types` and `@mcp-qa/core`. See [FOLDER_STRUCTURE.md](./FOLDER_STRUCTURE.md) for details on adding new runners or phases.
+
+### Next Steps
+
+1. Install dependencies: `pnpm install`
+2. Build in order: types → core → runner → cli/web
+3. Run tests: `pnpm test`
+4. Start development: `pnpm dev`
