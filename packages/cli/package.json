@@ -1,0 +1,26 @@
+{
+  "name": "@mcp-qa/cli",
+  "version": "0.1.0",
+  "description": "CLI for MCP QA Platform",
+  "type": "module",
+  "bin": {
+    "mcp-qa-cli": "./dist/bin.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "start": "bun run ./src/bin.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@mcp-qa/runner": "workspace:*",
+    "@mcp-qa/core": "workspace:*",
+    "open": "^10.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

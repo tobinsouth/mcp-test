@@ -1,0 +1,41 @@
+{
+  "name": "@mcp-qa/core",
+  "version": "0.1.0",
+  "description": "Core utilities for MCP QA Platform (auth, client, utils)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./auth": {
+      "types": "./dist/auth/index.d.ts",
+      "import": "./dist/auth/index.js"
+    },
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "import": "./dist/client/index.js"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "import": "./dist/utils/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@mcp-qa/types": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@upstash/redis": "^1.34.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
