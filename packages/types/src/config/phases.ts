@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Safety policy for interaction testing
@@ -6,7 +6,7 @@ import { z } from 'zod';
 export const SafetyPolicySchema = z.object({
   id: z.string(),
   description: z.string(),
-  severity: z.enum(['critical', 'high', 'medium', 'low']),
+  severity: z.enum(["critical", "high", "medium", "low"]),
 });
 
 /**
@@ -73,9 +73,9 @@ export const ToolsPhaseConfigSchema = z.object({
 export const InteractionPhaseConfigSchema = z.object({
   enabled: z.boolean().default(true),
   prompts: z.array(TestPromptSchema).default([]),
-  defaultModel: z.string().default('claude-sonnet-4-20250514'),
-  safetyReviewModel: z.string().default('claude-3-haiku-20240307'),
-  qualityReviewModel: z.string().default('claude-3-haiku-20240307'),
+  defaultModel: z.string().default("claude-sonnet-4-20250514"),
+  safetyReviewModel: z.string().default("claude-3-haiku-20240307"),
+  qualityReviewModel: z.string().default("claude-3-haiku-20240307"),
 });
 
 /**

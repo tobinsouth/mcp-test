@@ -1,8 +1,4 @@
-export type {
-  PhaseContext,
-  ExtendedPhaseResult,
-  PhaseRunner,
-} from './types.js';
+export type { PhaseContext, ExtendedPhaseResult, PhaseRunner } from "./types.js";
 
 export {
   createCheckRecorder,
@@ -11,4 +7,4 @@ export {
   failureCheck,
   warningCheck,
   infoCheck,
-} from './phase-runner.js';
+} from "./phase-runner.js";

@@ -1,11 +1,11 @@
-import type { OAuthClientProvider } from '@modelcontextprotocol/sdk/client/auth.js';
+import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import type {
   OAuthClientMetadata,
   OAuthClientInformationMixed,
   OAuthTokens,
-} from '@modelcontextprotocol/sdk/shared/auth.js';
-import type { TestCheck } from '@mcp-qa/types';
-import type { InteractiveAuthHandler } from '../handlers/types.js';
+} from "@modelcontextprotocol/sdk/shared/auth.js";
+import type { TestCheck } from "@mcp-qa/types";
+import type { InteractiveAuthHandler } from "../handlers/types.js";
 
 /**
  * Interface for recording test checks during auth flow
@@ -72,16 +72,16 @@ export class TestOAuthProvider implements OAuthClientProvider {
     this._clientInformation = info;
 
     this.recorder.pushCheck({
-      id: 'auth-client-registered',
-      name: 'Client Registration',
-      description: 'Successfully registered OAuth client',
-      status: 'SUCCESS',
+      id: "auth-client-registered",
+      name: "Client Registration",
+      description: "Successfully registered OAuth client",
+      status: "SUCCESS",
       timestamp: new Date().toISOString(),
-      specReferences: [{ id: 'RFC-7591', url: 'https://www.rfc-editor.org/rfc/rfc7591.html' }],
+      specReferences: [{ id: "RFC-7591", url: "https://www.rfc-editor.org/rfc/rfc7591.html" }],
       details: {
         clientId: info.client_id,
-        usedCIMD: info.client_id.startsWith('https://'),
-        hasSecret: 'client_secret' in info && !!info.client_secret,
+        usedCIMD: info.client_id.startsWith("https://"),
+        hasSecret: "client_secret" in info && !!info.client_secret,
       },
     });
   }
@@ -95,10 +95,12 @@ export class TestOAuthProvider implements OAuthClientProvider {
     this._tokens = tokens;
 
     this.recorder.pushCheck({
-      id: hadTokens ? 'auth-tokens-refreshed' : 'auth-tokens-obtained',
-      name: hadTokens ? 'Token Refresh' : 'Token Exchange',
-      description: hadTokens ? 'Successfully refreshed OAuth tokens' : 'Successfully obtained OAuth tokens',
-      status: 'SUCCESS',
+      id: hadTokens ? "auth-tokens-refreshed" : "auth-tokens-obtained",
+      name: hadTokens ? "Token Refresh" : "Token Exchange",
+      description: hadTokens
+        ? "Successfully refreshed OAuth tokens"
+        : "Successfully obtained OAuth tokens",
+      status: "SUCCESS",
       timestamp: new Date().toISOString(),
       details: {
         hasAccessToken: !!tokens.access_token,
@@ -113,18 +115,18 @@ export class TestOAuthProvider implements OAuthClientProvider {
     this._codeVerifier = codeVerifier;
 
     this.recorder.pushCheck({
-      id: 'auth-pkce-generated',
-      name: 'PKCE Generated',
-      description: 'Generated PKCE code verifier for authorization',
-      status: 'SUCCESS',
+      id: "auth-pkce-generated",
+      name: "PKCE Generated",
+      description: "Generated PKCE code verifier for authorization",
+      status: "SUCCESS",
       timestamp: new Date().toISOString(),
-      specReferences: [{ id: 'RFC-7636', url: 'https://www.rfc-editor.org/rfc/rfc7636.html' }],
+      specReferences: [{ id: "RFC-7636", url: "https://www.rfc-editor.org/rfc/rfc7636.html" }],
     });
   }
 
   codeVerifier(): string {
     if (!this._codeVerifier) {
-      throw new Error('No code verifier saved');
+      throw new Error("No code verifier saved");
     }
     return this._codeVerifier;
   }
@@ -140,17 +142,17 @@ export class TestOAuthProvider implements OAuthClientProvider {
 
   async redirectToAuthorization(authorizationUrl: URL): Promise<void> {
     this.recorder.pushCheck({
-      id: 'auth-redirect-initiated',
-      name: 'Authorization Redirect',
-      description: 'Authorization URL generated - awaiting user consent',
-      status: 'INFO',
+      id: "auth-redirect-initiated",
+      name: "Authorization Redirect",
+      description: "Authorization URL generated - awaiting user consent",
+      status: "INFO",
       timestamp: new Date().toISOString(),
       details: {
         authorizationEndpoint: authorizationUrl.origin + authorizationUrl.pathname,
-        hasCodeChallenge: authorizationUrl.searchParams.has('code_challenge'),
-        hasState: authorizationUrl.searchParams.has('state'),
-        hasResource: authorizationUrl.searchParams.has('resource'),
-        scope: authorizationUrl.searchParams.get('scope'),
+        hasCodeChallenge: authorizationUrl.searchParams.has("code_challenge"),
+        hasState: authorizationUrl.searchParams.has("state"),
+        hasResource: authorizationUrl.searchParams.has("resource"),
+        scope: authorizationUrl.searchParams.get("scope"),
       },
     });
 
@@ -162,42 +164,44 @@ export class TestOAuthProvider implements OAuthClientProvider {
       // Validate state to prevent CSRF
       if (callback.state && callback.state !== this._state) {
         this.recorder.pushCheck({
-          id: 'auth-state-mismatch',
-          name: 'State Validation',
-          description: 'OAuth state parameter mismatch (potential CSRF)',
-          status: 'FAILURE',
+          id: "auth-state-mismatch",
+          name: "State Validation",
+          description: "OAuth state parameter mismatch (potential CSRF)",
+          status: "FAILURE",
           timestamp: new Date().toISOString(),
-          errorMessage: 'State parameter does not match',
+          errorMessage: "State parameter does not match",
         });
-        throw new Error('OAuth state mismatch');
+        throw new Error("OAuth state mismatch");
       }
 
       this._authorizationCode = callback.code;
 
       this.recorder.pushCheck({
-        id: 'auth-callback-received',
-        name: 'Authorization Callback',
-        description: 'Received authorization callback with code',
-        status: 'SUCCESS',
+        id: "auth-callback-received",
+        name: "Authorization Callback",
+        description: "Received authorization callback with code",
+        status: "SUCCESS",
         timestamp: new Date().toISOString(),
       });
     } else {
       // No interactive handler - this is an error for real OAuth flows
       this.recorder.pushCheck({
-        id: 'auth-interactive-required',
-        name: 'Interactive Auth Required',
-        description: 'OAuth consent flow requires user interaction',
-        status: 'FAILURE',
+        id: "auth-interactive-required",
+        name: "Interactive Auth Required",
+        description: "OAuth consent flow requires user interaction",
+        status: "FAILURE",
         timestamp: new Date().toISOString(),
-        errorMessage: 'No interactive handler provided for OAuth consent flow. ' +
-          'Either provide an InteractiveAuthHandler or use pre-registered client credentials.',
+        errorMessage:
+          "No interactive handler provided for OAuth consent flow. " +
+          "Either provide an InteractiveAuthHandler or use pre-registered client credentials.",
         details: {
           authorizationUrl: authorizationUrl.toString(),
         },
       });
       throw new Error(
-        'Interactive OAuth flow requires an InteractiveAuthHandler. ' +
-        'URL: ' + authorizationUrl.toString()
+        "Interactive OAuth flow requires an InteractiveAuthHandler. " +
+          "URL: " +
+          authorizationUrl.toString()
       );
     }
   }
@@ -209,29 +213,29 @@ export class TestOAuthProvider implements OAuthClientProvider {
     return this._authorizationCode;
   }
 
-  invalidateCredentials(scope: 'all' | 'client' | 'tokens' | 'verifier'): void {
+  invalidateCredentials(scope: "all" | "client" | "tokens" | "verifier"): void {
     this.recorder.pushCheck({
-      id: 'auth-credentials-invalidated',
-      name: 'Credentials Invalidated',
+      id: "auth-credentials-invalidated",
+      name: "Credentials Invalidated",
       description: `Invalidating ${scope} credentials due to error`,
-      status: 'WARNING',
+      status: "WARNING",
       timestamp: new Date().toISOString(),
       details: { scope },
     });
 
     switch (scope) {
-      case 'all':
+      case "all":
         this._clientInformation = undefined;
         this._tokens = undefined;
         this._codeVerifier = undefined;
         break;
-      case 'client':
+      case "client":
         this._clientInformation = undefined;
         break;
-      case 'tokens':
+      case "tokens":
         this._tokens = undefined;
         break;
-      case 'verifier':
+      case "verifier":
         this._codeVerifier = undefined;
         break;
     }

@@ -1,12 +1,12 @@
-import type { Redis } from '@upstash/redis';
-import type { AuthSession, AuthSessionStore } from './types.js';
+import type { Redis } from "@upstash/redis";
+import type { AuthSession, AuthSessionStore } from "./types.js";
 
 /**
  * Redis-backed session store for production deployments.
  * Works with Upstash (serverless) or self-hosted Redis.
  */
 export class RedisSessionStore implements AuthSessionStore {
-  private prefix = 'mcp-test:auth:';
+  private prefix = "mcp-test:auth:";
 
   constructor(private redis: Redis) {}
 
@@ -18,7 +18,7 @@ export class RedisSessionStore implements AuthSessionStore {
     const now = new Date();
     const session: AuthSession = {
       runId,
-      status: 'pending',
+      status: "pending",
       createdAt: now.toISOString(),
       expiresAt: new Date(now.getTime() + expiresInMs).toISOString(),
     };
@@ -32,7 +32,7 @@ export class RedisSessionStore implements AuthSessionStore {
   async get(runId: string): Promise<AuthSession | null> {
     const data = await this.redis.get<string>(this.key(runId));
     if (!data) return null;
-    return typeof data === 'string' ? JSON.parse(data) : data;
+    return typeof data === "string" ? JSON.parse(data) : data;
   }
 
   async setAuthorizationUrl(runId: string, url: string, originalState: string): Promise<void> {
@@ -55,7 +55,7 @@ export class RedisSessionStore implements AuthSessionStore {
   async updateWithCallback(runId: string, code: string, state: string): Promise<void> {
     const session = await this.get(runId);
     if (session) {
-      session.status = 'callback_received';
+      session.status = "callback_received";
       session.callbackData = { code, state };
       const ttl = await this.redis.pttl(this.key(runId));
       if (ttl > 0) {
@@ -71,7 +71,7 @@ export class RedisSessionStore implements AuthSessionStore {
   async updateWithError(runId: string, error: string): Promise<void> {
     const session = await this.get(runId);
     if (session) {
-      session.status = 'error';
+      session.status = "error";
       session.error = error;
       const ttl = await this.redis.pttl(this.key(runId));
       if (ttl > 0) {

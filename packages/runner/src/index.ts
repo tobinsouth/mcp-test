@@ -1,5 +1,5 @@
 // Main runner
-export { runTests, runTestsWithConfig, type RunTestsOptions } from './runner.js';
+export { runTests, runTestsWithConfig, type RunTestsOptions } from "./runner.js";
 
 // Config utilities
 export {
@@ -7,7 +7,7 @@ export {
   validateConfig,
   createDefaultConfig,
   generateExampleConfig,
-} from './config-loader.js';
+} from "./config-loader.js";
 
 // Re-export phases for direct use
-export * from './phases/index.js';
+export * from "./phases/index.js";

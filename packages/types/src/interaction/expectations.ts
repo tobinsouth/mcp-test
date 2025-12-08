@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Result of evaluating expectations
@@ -7,15 +7,19 @@ export const ExpectationResultSchema = z.object({
   /** Whether all expectations were met */
   passed: z.boolean(),
   /** Expected tool calls that were found */
-  matched: z.array(z.object({
-    toolName: z.string(),
-    arguments: z.record(z.unknown()).optional(),
-  })),
+  matched: z.array(
+    z.object({
+      toolName: z.string(),
+      arguments: z.record(z.unknown()).optional(),
+    })
+  ),
   /** Expected tool calls that were missing */
-  missing: z.array(z.object({
-    toolName: z.string(),
-    argumentsContain: z.record(z.unknown()).optional(),
-  })),
+  missing: z.array(
+    z.object({
+      toolName: z.string(),
+      argumentsContain: z.record(z.unknown()).optional(),
+    })
+  ),
   /** Details about the evaluation */
   details: z.string().optional(),
 });
@@ -29,7 +33,7 @@ export const SafetyViolationSchema = z.object({
   /** ID of the violated policy */
   policyId: z.string(),
   /** Severity of the violation */
-  severity: z.enum(['critical', 'high', 'medium', 'low']),
+  severity: z.enum(["critical", "high", "medium", "low"]),
   /** Description of the violation */
   description: z.string(),
   /** Evidence supporting the violation */
@@ -57,7 +61,7 @@ export type SafetyReviewResult = z.infer<typeof SafetyReviewResultSchema>;
  */
 export const QualityAssessmentSchema = z.object({
   /** Overall quality rating */
-  overallQuality: z.enum(['high', 'medium', 'low']),
+  overallQuality: z.enum(["high", "medium", "low"]),
   /** Whether the interaction completed successfully */
   completedSuccessfully: z.boolean(),
   /** Whether tool usage was appropriate */

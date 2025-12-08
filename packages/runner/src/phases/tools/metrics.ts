@@ -1,5 +1,5 @@
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
-import { countTokens } from '@mcp-qa/core';
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import { countTokens } from "@mcp-qa/core";
 
 /**
  * Metrics for a single tool definition
@@ -19,7 +19,7 @@ export interface ToolMetrics {
  * Analyze a tool and calculate its metrics.
  */
 export function analyzeToolMetrics(tool: Tool): ToolMetrics {
-  const descriptionText = tool.description || '';
+  const descriptionText = tool.description || "";
   const schemaText = JSON.stringify(tool.inputSchema || {});
 
   const descriptionTokens = countTokens(descriptionText);
@@ -33,7 +33,9 @@ export function analyzeToolMetrics(tool: Tool): ToolMetrics {
     hasDescription: !!tool.description,
     hasInputSchema: !!tool.inputSchema && Object.keys(tool.inputSchema).length > 0,
     hasAnnotations: !!(tool as Record<string, unknown>).annotations,
-    annotationDetails: (tool as Record<string, unknown>).annotations as Record<string, unknown> | undefined,
+    annotationDetails: (tool as Record<string, unknown>).annotations as
+      | Record<string, unknown>
+      | undefined,
   };
 }
 
@@ -66,13 +68,9 @@ export function calculateAggregateMetrics(toolMetrics: ToolMetrics[]): {
   const largestTool = sorted[0]?.name ?? null;
   const smallestTool = sorted[sorted.length - 1]?.name ?? null;
 
-  const toolsWithoutDescription = toolMetrics
-    .filter(m => !m.hasDescription)
-    .map(m => m.name);
+  const toolsWithoutDescription = toolMetrics.filter((m) => !m.hasDescription).map((m) => m.name);
 
-  const toolsWithLargeSchema = toolMetrics
-    .filter(m => m.totalTokens > 5000)
-    .map(m => m.name);
+  const toolsWithLargeSchema = toolMetrics.filter((m) => m.totalTokens > 5000).map((m) => m.name);
 
   return {
     totalTokens,

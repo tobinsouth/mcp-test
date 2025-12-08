@@ -1,5 +1,5 @@
-import type { TestReport, PhaseResult } from '@mcp-qa/types';
-import { bold, dim, green, red, yellow, gray, statusText, cyan } from './colors.js';
+import type { TestReport, PhaseResult } from "@mcp-qa/types";
+import { bold, dim, green, red, yellow, gray, statusText, cyan } from "./colors.js";
 
 /**
  * Format a complete test report for console output
@@ -8,11 +8,11 @@ export function formatReport(report: TestReport): string {
   const lines: string[] = [];
 
   // Header
-  lines.push('');
-  lines.push(bold('═══════════════════════════════════════════════════════════'));
-  lines.push(bold('                    MCP QA Test Report'));
-  lines.push(bold('═══════════════════════════════════════════════════════════'));
-  lines.push('');
+  lines.push("");
+  lines.push(bold("═══════════════════════════════════════════════════════════"));
+  lines.push(bold("                    MCP QA Test Report"));
+  lines.push(bold("═══════════════════════════════════════════════════════════"));
+  lines.push("");
 
   // Server info
   lines.push(`Server: ${cyan(report.serverUrl)}`);
@@ -20,79 +20,81 @@ export function formatReport(report: TestReport): string {
     lines.push(`Name:   ${report.serverName}`);
   }
   lines.push(`Duration: ${formatDuration(report.totalDurationMs)}`);
-  lines.push('');
+  lines.push("");
 
   // Overall status
   const statusLine = `Overall Status: ${statusText(report.overallStatus)}`;
   lines.push(bold(statusLine));
-  lines.push('');
+  lines.push("");
 
   // Summary
-  lines.push(bold('Summary:'));
+  lines.push(bold("Summary:"));
   lines.push(`  Total Checks:  ${report.summary.totalChecks}`);
-  lines.push(`  ${green('Passed')}:       ${report.summary.passed}`);
-  lines.push(`  ${red('Failed')}:       ${report.summary.failed}`);
-  lines.push(`  ${yellow('Warnings')}:     ${report.summary.warnings}`);
-  lines.push(`  ${gray('Skipped')}:      ${report.summary.skipped}`);
-  lines.push('');
+  lines.push(`  ${green("Passed")}:       ${report.summary.passed}`);
+  lines.push(`  ${red("Failed")}:       ${report.summary.failed}`);
+  lines.push(`  ${yellow("Warnings")}:     ${report.summary.warnings}`);
+  lines.push(`  ${gray("Skipped")}:      ${report.summary.skipped}`);
+  lines.push("");
 
   // Phase breakdown
   if (report.phases.length > 0) {
-    lines.push(bold('Phase Results:'));
+    lines.push(bold("Phase Results:"));
     for (const phase of report.phases) {
       lines.push(formatPhaseResult(phase));
     }
-    lines.push('');
+    lines.push("");
   }
 
   // Failures (if any)
-  const failures = report.phases.flatMap(p =>
-    p.checks.filter(c => c.status === 'FAILURE')
-  );
+  const failures = report.phases.flatMap((p) => p.checks.filter((c) => c.status === "FAILURE"));
   if (failures.length > 0) {
-    lines.push(bold(red('Failures:')));
+    lines.push(bold(red("Failures:")));
     for (const failure of failures) {
-      lines.push(`  ${red('✗')} ${failure.name}`);
+      lines.push(`  ${red("✗")} ${failure.name}`);
       lines.push(`    ${dim(failure.description)}`);
       if (failure.errorMessage) {
         lines.push(`    ${red(failure.errorMessage)}`);
       }
     }
-    lines.push('');
+    lines.push("");
   }
 
   // Warnings (if any)
-  const warnings = report.phases.flatMap(p =>
-    p.checks.filter(c => c.status === 'WARNING')
-  );
+  const warnings = report.phases.flatMap((p) => p.checks.filter((c) => c.status === "WARNING"));
   if (warnings.length > 0) {
-    lines.push(bold(yellow('Warnings:')));
+    lines.push(bold(yellow("Warnings:")));
     for (const warning of warnings) {
-      lines.push(`  ${yellow('⚠')} ${warning.name}`);
+      lines.push(`  ${yellow("⚠")} ${warning.name}`);
       lines.push(`    ${dim(warning.description)}`);
     }
-    lines.push('');
+    lines.push("");
   }
 
-  lines.push(dim('═══════════════════════════════════════════════════════════'));
+  lines.push(dim("═══════════════════════════════════════════════════════════"));
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
 /**
  * Format a single phase result
  */
 function formatPhaseResult(phase: PhaseResult): string {
-  const status = phase.summary.failure > 0 ? red('FAIL') :
-                 phase.summary.warning > 0 ? yellow('WARN') : green('PASS');
+  const status =
+    phase.summary.failure > 0
+      ? red("FAIL")
+      : phase.summary.warning > 0
+        ? yellow("WARN")
+        : green("PASS");
 
   const counts = [
     phase.summary.success > 0 ? green(`${phase.summary.success} passed`) : null,
     phase.summary.failure > 0 ? red(`${phase.summary.failure} failed`) : null,
     phase.summary.warning > 0 ? yellow(`${phase.summary.warning} warnings`) : null,
-  ].filter(Boolean).join(', ');
+  ]
+    .filter(Boolean)
+    .join(", ");
 
-  return `  ${status} ${bold(phase.name)} (${formatDuration(phase.durationMs)}): ${counts || 'no checks'}`;
+  return `  ${status} ${bold(phase.name)} (${formatDuration(phase.durationMs)}): ${counts || "no checks"}`;
 }
 
 /**

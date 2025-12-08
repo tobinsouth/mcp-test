@@ -1,15 +1,9 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Status of a test check
  */
-export const CheckStatusSchema = z.enum([
-  'SUCCESS',
-  'FAILURE',
-  'WARNING',
-  'SKIPPED',
-  'INFO',
-]);
+export const CheckStatusSchema = z.enum(["SUCCESS", "FAILURE", "WARNING", "SKIPPED", "INFO"]);
 
 export type CheckStatus = z.infer<typeof CheckStatusSchema>;
 

@@ -1,6 +1,6 @@
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
-import type { Transcript, TranscriptEntry, TranscriptEntryType } from '@mcp-qa/types';
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
+import type { Transcript, TranscriptEntry, TranscriptEntryType } from "@mcp-qa/types";
 
 /**
  * Records interactions between Claude and MCP tools
@@ -21,7 +21,7 @@ export class TranscriptRecorder {
    * Record a user message
    */
   recordUserMessage(content: string): void {
-    this.addEntry('user_message', content);
+    this.addEntry("user_message", content);
   }
 
   /**
@@ -29,7 +29,7 @@ export class TranscriptRecorder {
    */
   recordClaudeResponse(response: unknown): void {
     this.iterations++;
-    this.addEntry('assistant_message', response);
+    this.addEntry("assistant_message", response);
   }
 
   /**
@@ -37,7 +37,7 @@ export class TranscriptRecorder {
    */
   recordToolCall(toolName: string, args: unknown): void {
     this.toolsCalled.add(toolName);
-    this.addEntry('tool_call', {
+    this.addEntry("tool_call", {
       toolName,
       arguments: args,
     });
@@ -47,7 +47,7 @@ export class TranscriptRecorder {
    * Record a tool result
    */
   recordToolResult(toolName: string, result: unknown): void {
-    this.addEntry('tool_result', {
+    this.addEntry("tool_result", {
       toolName,
       result,
       isError: false,
@@ -58,7 +58,7 @@ export class TranscriptRecorder {
    * Record a tool error
    */
   recordToolError(toolName: string, error: string): void {
-    this.addEntry('tool_error', {
+    this.addEntry("tool_error", {
       toolName,
       error,
       isError: true,
@@ -70,7 +70,7 @@ export class TranscriptRecorder {
    */
   recordFinalResponse(response: string): void {
     this._finalResponse = response;
-    this.addEntry('final_response', response);
+    this.addEntry("final_response", response);
     this.endTime = new Date().toISOString();
   }
 
@@ -78,7 +78,7 @@ export class TranscriptRecorder {
    * Add a system note
    */
   recordSystemNote(note: string): void {
-    this.addEntry('system', note);
+    this.addEntry("system", note);
   }
 
   /**

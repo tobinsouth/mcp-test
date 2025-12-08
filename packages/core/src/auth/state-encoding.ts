@@ -1,5 +1,5 @@
-const STATE_PREFIX = 'mcp';
-const STATE_SEPARATOR = ':';
+const STATE_PREFIX = "mcp";
+const STATE_SEPARATOR = ":";
 
 /**
  * Encode runId and original state into OAuth state parameter.

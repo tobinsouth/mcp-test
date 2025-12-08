@@ -3,7 +3,7 @@ export {
   TestOAuthProvider,
   type AuthCheckRecorder,
   type TestOAuthProviderConfig,
-} from './provider/index.js';
+} from "./provider/index.js";
 
 // Handlers
 export {
@@ -11,7 +11,7 @@ export {
   createCLIAuthHandler,
   createWebAuthHandler,
   type WebAuthHandlerOptions,
-} from './handlers/index.js';
+} from "./handlers/index.js";
 
 // Session stores
 export {
@@ -20,7 +20,7 @@ export {
   type AuthSessionStore,
   MemorySessionStore,
   RedisSessionStore,
-} from './session/index.js';
+} from "./session/index.js";
 
 // State encoding
-export { encodeState, decodeState } from './state-encoding.js';
+export { encodeState, decodeState } from "./state-encoding.js";

@@ -1,4 +1,4 @@
-import type { AuthSession, AuthSessionStore } from './types.js';
+import type { AuthSession, AuthSessionStore } from "./types.js";
 
 /**
  * In-memory session store for development/testing.
@@ -13,7 +13,7 @@ export class MemorySessionStore implements AuthSessionStore {
     const now = new Date();
     this.sessions.set(runId, {
       runId,
-      status: 'pending',
+      status: "pending",
       createdAt: now.toISOString(),
       expiresAt: new Date(now.getTime() + expiresInMs).toISOString(),
     });
@@ -25,7 +25,7 @@ export class MemorySessionStore implements AuthSessionStore {
 
     // Check expiration
     if (new Date(session.expiresAt) < new Date()) {
-      session.status = 'expired';
+      session.status = "expired";
     }
 
     return session;
@@ -42,7 +42,7 @@ export class MemorySessionStore implements AuthSessionStore {
   async updateWithCallback(runId: string, code: string, state: string): Promise<void> {
     const session = this.sessions.get(runId);
     if (session) {
-      session.status = 'callback_received';
+      session.status = "callback_received";
       session.callbackData = { code, state };
     }
   }
@@ -50,7 +50,7 @@ export class MemorySessionStore implements AuthSessionStore {
   async updateWithError(runId: string, error: string): Promise<void> {
     const session = this.sessions.get(runId);
     if (session) {
-      session.status = 'error';
+      session.status = "error";
       session.error = error;
     }
   }

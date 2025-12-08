@@ -1,7 +1,7 @@
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import type { TestCheck, PhaseResult } from '@mcp-qa/types';
-import { createCheckRecorder, createTimer } from '../base/index.js';
-import { analyzeToolMetrics, calculateAggregateMetrics, type ToolMetrics } from './metrics.js';
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { TestCheck, PhaseResult } from "@mcp-qa/types";
+import { createCheckRecorder, createTimer } from "../base/index.js";
+import { analyzeToolMetrics, calculateAggregateMetrics, type ToolMetrics } from "./metrics.js";
 
 export interface ToolsPhaseOptions {
   onProgress?: (check: TestCheck) => void;
@@ -28,38 +28,38 @@ export async function runToolsPhase(
     const result = await client.listTools();
 
     recorder.pushCheck({
-      id: 'tools-list-success',
-      name: 'List Tools',
+      id: "tools-list-success",
+      name: "List Tools",
       description: `Server exposes ${result.tools.length} tools`,
-      status: 'SUCCESS',
+      status: "SUCCESS",
       timestamp: new Date().toISOString(),
       details: {
         toolCount: result.tools.length,
-        toolNames: result.tools.map(t => t.name),
+        toolNames: result.tools.map((t) => t.name),
       },
     });
 
     if (result.tools.length === 0) {
       recorder.pushCheck({
-        id: 'tools-none-available',
-        name: 'No Tools Available',
-        description: 'Server has no tools defined',
-        status: 'WARNING',
+        id: "tools-none-available",
+        name: "No Tools Available",
+        description: "Server has no tools defined",
+        status: "WARNING",
         timestamp: new Date().toISOString(),
       });
     }
 
     // Analyze each tool
     if (options?.analyzeTokenCounts !== false) {
-      toolMetrics = result.tools.map(tool => analyzeToolMetrics(tool));
+      toolMetrics = result.tools.map((tool) => analyzeToolMetrics(tool));
 
       const aggregate = calculateAggregateMetrics(toolMetrics);
 
       recorder.pushCheck({
-        id: 'tools-token-analysis',
-        name: 'Token Analysis',
+        id: "tools-token-analysis",
+        name: "Token Analysis",
         description: `Total: ${aggregate.totalTokens} tokens, Average: ${aggregate.averageTokensPerTool} tokens/tool`,
-        status: aggregate.totalTokens > 50000 ? 'WARNING' : 'SUCCESS',
+        status: aggregate.totalTokens > 50000 ? "WARNING" : "SUCCESS",
         timestamp: new Date().toISOString(),
         details: {
           totalTokens: aggregate.totalTokens,
@@ -74,8 +74,8 @@ export async function runToolsPhase(
           recorder.pushCheck({
             id: `tools-${metrics.name}-no-description`,
             name: `Tool: ${metrics.name}`,
-            description: 'Tool is missing a description',
-            status: 'WARNING',
+            description: "Tool is missing a description",
+            status: "WARNING",
             timestamp: new Date().toISOString(),
           });
         }
@@ -85,28 +85,27 @@ export async function runToolsPhase(
             id: `tools-${metrics.name}-large`,
             name: `Tool: ${metrics.name}`,
             description: `Tool definition is large (${metrics.totalTokens} tokens)`,
-            status: 'WARNING',
+            status: "WARNING",
             timestamp: new Date().toISOString(),
           });
         }
       }
     }
-
   } catch (error) {
     recorder.pushCheck({
-      id: 'tools-list-failed',
-      name: 'List Tools Failed',
-      description: 'Failed to list tools from server',
-      status: 'FAILURE',
+      id: "tools-list-failed",
+      name: "List Tools Failed",
+      description: "Failed to list tools from server",
+      status: "FAILURE",
       timestamp: new Date().toISOString(),
       errorMessage: error instanceof Error ? error.message : String(error),
     });
   }
 
   return {
-    phase: 'tools',
-    name: 'Tool Quality Analysis',
-    description: 'Analyzing tool definitions and quality metrics',
+    phase: "tools",
+    name: "Tool Quality Analysis",
+    description: "Analyzing tool definitions and quality metrics",
     startTime: timer.startTime,
     endTime: timer.getEndTime(),
     durationMs: timer.getDurationMs(),

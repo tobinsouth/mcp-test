@@ -1,6 +1,7 @@
 {
   "name": "mcp-qa-platform",
   "private": true,
+  "type": "module",
   "workspaces": [
     "packages/*"
   ],
@@ -8,14 +9,24 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "test": "turbo run test",
-    "lint": "turbo run lint",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "turbo run typecheck",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "turbo run clean && rm -rf node_modules",
+    "ci": "pnpm run lint && pnpm run format:check && pnpm run typecheck && pnpm run build"
   },
   "devDependencies": {
+    "@eslint/js": "^9.15.0",
     "@types/node": "^20.0.0",
+    "eslint": "^9.15.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.0",
+    "prettier": "^3.4.0",
     "turbo": "^2.0.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.15.0"
   },
   "packageManager": "pnpm@9.0.0",
   "engines": {

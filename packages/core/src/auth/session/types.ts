@@ -1,7 +1,7 @@
 /**
  * OAuth session status
  */
-export type AuthSessionStatus = 'pending' | 'callback_received' | 'error' | 'expired';
+export type AuthSessionStatus = "pending" | "callback_received" | "error" | "expired";
 
 /**
  * OAuth session data stored across processes

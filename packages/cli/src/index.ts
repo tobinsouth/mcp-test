@@ -1,4 +1,4 @@
-import { runCommand, validateCommand, initCommand } from './commands/index.js';
+import { runCommand, validateCommand, initCommand } from "./commands/index.js";
 
 const HELP_TEXT = `
 MCP Server QA Test Runner
@@ -37,7 +37,7 @@ Exit Codes:
  * Parse command line arguments
  */
 function parseArgs(args: string[]): {
-  command: 'run' | 'validate' | 'init' | 'help';
+  command: "run" | "validate" | "init" | "help";
   configPath?: string;
   verbose: boolean;
   interactive: boolean;
@@ -48,14 +48,14 @@ function parseArgs(args: string[]): {
   force: boolean;
 } {
   const result = {
-    command: 'run' as 'run' | 'validate' | 'init' | 'help',
+    command: "run" as "run" | "validate" | "init" | "help",
     configPath: undefined as string | undefined,
     verbose: false,
     interactive: false,
     anthropicKey: undefined as string | undefined,
     json: false,
     noColor: false,
-    output: 'mcp-qa-config.json',
+    output: "mcp-qa-config.json",
     force: false,
   };
 
@@ -63,60 +63,60 @@ function parseArgs(args: string[]): {
   while (i < args.length) {
     const arg = args[i];
 
-    if (arg === '--help' || arg === '-h') {
-      result.command = 'help';
+    if (arg === "--help" || arg === "-h") {
+      result.command = "help";
       return result;
     }
 
-    if (arg === 'validate') {
-      result.command = 'validate';
+    if (arg === "validate") {
+      result.command = "validate";
       i++;
       continue;
     }
 
-    if (arg === 'init') {
-      result.command = 'init';
+    if (arg === "init") {
+      result.command = "init";
       i++;
       continue;
     }
 
-    if (arg === '--verbose' || arg === '-v') {
+    if (arg === "--verbose" || arg === "-v") {
       result.verbose = true;
       i++;
       continue;
     }
 
-    if (arg === '--interactive' || arg === '-i') {
+    if (arg === "--interactive" || arg === "-i") {
       result.interactive = true;
       i++;
       continue;
     }
 
-    if (arg === '--json') {
+    if (arg === "--json") {
       result.json = true;
       i++;
       continue;
     }
 
-    if (arg === '--no-color') {
+    if (arg === "--no-color") {
       result.noColor = true;
       i++;
       continue;
     }
 
-    if (arg === '--force' || arg === '-f') {
+    if (arg === "--force" || arg === "-f") {
       result.force = true;
       i++;
       continue;
     }
 
-    if (arg === '--anthropic-key' && args[i + 1]) {
+    if (arg === "--anthropic-key" && args[i + 1]) {
       result.anthropicKey = args[i + 1];
       i += 2;
       continue;
     }
 
-    if ((arg === '--output' || arg === '-o')) {
+    if (arg === "--output" || arg === "-o") {
       const nextArg = args[i + 1];
       if (nextArg) {
         result.output = nextArg;
@@ -126,7 +126,7 @@ function parseArgs(args: string[]): {
     }
 
     // Assume it's a config path if it doesn't start with -
-    if (arg && !arg.startsWith('-')) {
+    if (arg && !arg.startsWith("-")) {
       result.configPath = arg;
       i++;
       continue;
@@ -134,17 +134,17 @@ function parseArgs(args: string[]): {
 
     // Unknown option
     console.error(`Unknown option: ${arg}`);
-    result.command = 'help';
+    result.command = "help";
     return result;
   }
 
   // Validate required arguments
-  if (result.command === 'run' && !result.configPath) {
-    result.command = 'help';
+  if (result.command === "run" && !result.configPath) {
+    result.command = "help";
   }
 
-  if (result.command === 'validate' && !result.configPath) {
-    result.command = 'help';
+  if (result.command === "validate" && !result.configPath) {
+    result.command = "help";
   }
 
   return result;
@@ -156,19 +156,19 @@ function parseArgs(args: string[]): {
 export async function main(args: string[]): Promise<number> {
   const parsed = parseArgs(args);
 
-  if (parsed.command === 'help') {
+  if (parsed.command === "help") {
     console.log(HELP_TEXT);
     return 0;
   }
 
-  if (parsed.command === 'validate') {
+  if (parsed.command === "validate") {
     return validateCommand({
       configPath: parsed.configPath!,
       noColor: parsed.noColor,
     });
   }
 
-  if (parsed.command === 'init') {
+  if (parsed.command === "init") {
     return initCommand({
       output: parsed.output,
       noColor: parsed.noColor,
@@ -188,5 +188,5 @@ export async function main(args: string[]): Promise<number> {
 }
 
 // Export for programmatic use
-export * from './commands/index.js';
-export * from './output/index.js';
+export * from "./commands/index.js";
+export * from "./output/index.js";
