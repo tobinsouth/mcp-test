@@ -16,11 +16,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@mcp-qa/runner": "workspace:*",
+    "@mcp-qa/types": "workspace:*",
     "@mcp-qa/core": "workspace:*",
+    "@mcp-qa/runner": "workspace:*",
     "open": "^10.0.0"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "typescript": "^5.4.0"
   }
 }
