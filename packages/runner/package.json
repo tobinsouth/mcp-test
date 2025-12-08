@@ -23,12 +23,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@mcp-qa/types": "workspace:*",
+    "@anthropic-ai/sdk": "^0.30.0",
     "@mcp-qa/core": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "@anthropic-ai/sdk": "^0.30.0"
+    "@mcp-qa/types": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "typescript": "^5.4.0"
   }
 }
