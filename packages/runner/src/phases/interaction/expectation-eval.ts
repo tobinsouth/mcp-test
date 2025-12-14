@@ -1,4 +1,4 @@
-import type { ExpectedToolCall } from '@mcp-qa/types';
+import type { ExpectedToolCall } from "@mcp-qa/types";
 
 export interface ToolCallRecord {
   toolName: string;
@@ -23,7 +23,7 @@ export function evaluateToolCalls(
   const matched: Array<{ toolName: string; arguments: Record<string, unknown> }> = [];
 
   for (const exp of expected) {
-    const found = actual.find(act => {
+    const found = actual.find((act) => {
       if (act.toolName !== exp.toolName) return false;
 
       if (exp.argumentsContain) {
@@ -67,22 +67,18 @@ function deepContains(actual: unknown, expected: unknown): boolean {
     return false;
   }
 
-  if (typeof expected !== 'object') {
+  if (typeof expected !== "object") {
     return actual === expected;
   }
 
   if (Array.isArray(expected)) {
     if (!Array.isArray(actual)) return false;
-    return expected.every(exp =>
-      actual.some(act => deepContains(act, exp))
-    );
+    return expected.every((exp) => actual.some((act) => deepContains(act, exp)));
   }
 
   // Object comparison
   const expectedObj = expected as Record<string, unknown>;
   const actualObj = actual as Record<string, unknown>;
 
-  return Object.entries(expectedObj).every(([key, value]) =>
-    deepContains(actualObj[key], value)
-  );
+  return Object.entries(expectedObj).every(([key, value]) => deepContains(actualObj[key], value));
 }

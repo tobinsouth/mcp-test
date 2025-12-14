@@ -1,8 +1,8 @@
 // Configuration types
-export * from './config/index.js';
+export * from "./config/index.js";
 
 // Result types
-export * from './results/index.js';
+export * from "./results/index.js";
 
 // Interaction types
-export * from './interaction/index.js';
+export * from "./interaction/index.js";

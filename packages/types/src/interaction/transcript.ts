@@ -1,16 +1,16 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Type of transcript entry
  */
 export const TranscriptEntryTypeSchema = z.enum([
-  'user_message',
-  'assistant_message',
-  'tool_call',
-  'tool_result',
-  'tool_error',
-  'final_response',
-  'system',
+  "user_message",
+  "assistant_message",
+  "tool_call",
+  "tool_result",
+  "tool_error",
+  "final_response",
+  "system",
 ]);
 
 export type TranscriptEntryType = z.infer<typeof TranscriptEntryTypeSchema>;

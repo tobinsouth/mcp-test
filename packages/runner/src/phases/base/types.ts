@@ -1,6 +1,6 @@
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import type { TestConfig, TestCheck, PhaseResult } from '@mcp-qa/types';
-import type { TestOAuthProvider } from '@mcp-qa/core';
+import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { TestConfig, TestCheck, PhaseResult } from "@mcp-qa/types";
+import type { TestOAuthProvider } from "@mcp-qa/core";
 
 /**
  * Context passed to phase runners

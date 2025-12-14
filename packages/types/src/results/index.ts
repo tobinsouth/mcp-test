@@ -5,7 +5,7 @@ export {
   type CheckStatus,
   type SpecReference,
   type TestCheck,
-} from './check.js';
+} from "./check.js";
 
 export {
   PhaseNameSchema,
@@ -14,7 +14,7 @@ export {
   type PhaseName,
   type CheckSummary,
   type PhaseResult,
-} from './phase-result.js';
+} from "./phase-result.js";
 
 export {
   OverallStatusSchema,
@@ -23,4 +23,4 @@ export {
   type OverallStatus,
   type ReportSummary,
   type TestReport,
-} from './report.js';
+} from "./report.js";

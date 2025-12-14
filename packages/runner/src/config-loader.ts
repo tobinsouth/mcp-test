@@ -1,5 +1,5 @@
-import * as fs from 'node:fs/promises';
-import { TestConfigSchema, type TestConfig } from '@mcp-qa/types';
+import * as fs from "node:fs/promises";
+import { TestConfigSchema, type TestConfig } from "@mcp-qa/types";
 
 /**
  * Load and validate a test configuration from a JSON file.
@@ -9,7 +9,7 @@ import { TestConfigSchema, type TestConfig } from '@mcp-qa/types';
  * @throws If file doesn't exist or configuration is invalid
  */
 export async function loadConfig(configPath: string): Promise<TestConfig> {
-  const configRaw = await fs.readFile(configPath, 'utf-8');
+  const configRaw = await fs.readFile(configPath, "utf-8");
   const configJson = JSON.parse(configRaw);
   return TestConfigSchema.parse(configJson);
 }
@@ -30,13 +30,13 @@ export function validateConfig(config: unknown): TestConfig {
  */
 export function createDefaultConfig(serverUrl: string): TestConfig {
   return {
-    version: '1.0',
+    version: "1.0",
     server: {
       url: serverUrl,
-      transport: 'streamable-http',
+      transport: "streamable-http",
     },
     auth: {
-      type: 'none',
+      type: "none",
     },
     phases: {
       auth: { enabled: true, timeout: 30000 },
@@ -45,15 +45,15 @@ export function createDefaultConfig(serverUrl: string): TestConfig {
       interaction: {
         enabled: false,
         prompts: [],
-        defaultModel: 'claude-sonnet-4-20250514',
-        safetyReviewModel: 'claude-3-haiku-20240307',
-        qualityReviewModel: 'claude-3-haiku-20240307',
+        defaultModel: "claude-sonnet-4-20250514",
+        safetyReviewModel: "claude-3-haiku-20240307",
+        qualityReviewModel: "claude-3-haiku-20240307",
       },
     },
     output: {
-      transcriptDir: './transcripts',
-      reportPath: './test-report.json',
-      format: 'json',
+      transcriptDir: "./transcripts",
+      reportPath: "./test-report.json",
+      format: "json",
     },
   };
 }
@@ -63,14 +63,14 @@ export function createDefaultConfig(serverUrl: string): TestConfig {
  */
 export function generateExampleConfig(): string {
   const example = {
-    version: '1.0',
+    version: "1.0",
     server: {
-      url: 'http://localhost:3001/mcp',
-      name: 'My MCP Server',
-      transport: 'streamable-http',
+      url: "http://localhost:3001/mcp",
+      name: "My MCP Server",
+      transport: "streamable-http",
     },
     auth: {
-      type: 'none',
+      type: "none",
     },
     phases: {
       auth: {
@@ -92,27 +92,25 @@ export function generateExampleConfig(): string {
         enabled: true,
         prompts: [
           {
-            id: 'basic-tool-test',
-            name: 'Basic Tool Usage',
+            id: "basic-tool-test",
+            name: "Basic Tool Usage",
             prompt: 'List the available tools and then use the echo tool with message "hello"',
             expectations: {
-              expectedToolCalls: [
-                { toolName: 'echo', argumentsContain: { message: 'hello' } },
-              ],
+              expectedToolCalls: [{ toolName: "echo", argumentsContain: { message: "hello" } }],
               shouldSucceed: true,
               maxIterations: 20,
             },
           },
         ],
-        defaultModel: 'claude-sonnet-4-20250514',
-        safetyReviewModel: 'claude-3-haiku-20240307',
-        qualityReviewModel: 'claude-3-haiku-20240307',
+        defaultModel: "claude-sonnet-4-20250514",
+        safetyReviewModel: "claude-3-haiku-20240307",
+        qualityReviewModel: "claude-3-haiku-20240307",
       },
     },
     output: {
-      transcriptDir: './transcripts',
-      reportPath: './test-report.json',
-      format: 'json',
+      transcriptDir: "./transcripts",
+      reportPath: "./test-report.json",
+      format: "json",
     },
   };
 

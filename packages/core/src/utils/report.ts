@@ -1,4 +1,4 @@
-import type { CheckSummary, TestCheck } from '@mcp-qa/types';
+import type { CheckSummary, TestCheck } from "@mcp-qa/types";
 
 /**
  * Summarize a list of checks into counts by status.
@@ -9,10 +9,10 @@ import type { CheckSummary, TestCheck } from '@mcp-qa/types';
 export function summarizeChecks(checks: TestCheck[]): CheckSummary {
   return {
     total: checks.length,
-    success: checks.filter(c => c.status === 'SUCCESS').length,
-    failure: checks.filter(c => c.status === 'FAILURE').length,
-    warning: checks.filter(c => c.status === 'WARNING').length,
-    skipped: checks.filter(c => c.status === 'SKIPPED').length,
+    success: checks.filter((c) => c.status === "SUCCESS").length,
+    failure: checks.filter((c) => c.status === "FAILURE").length,
+    warning: checks.filter((c) => c.status === "WARNING").length,
+    skipped: checks.filter((c) => c.status === "SKIPPED").length,
   };
 }
 
@@ -22,7 +22,9 @@ export function summarizeChecks(checks: TestCheck[]): CheckSummary {
  * @param partial - Partial check data
  * @returns Complete test check
  */
-export function createCheck(partial: Partial<TestCheck> & { id: string; name: string; status: TestCheck['status'] }): TestCheck {
+export function createCheck(
+  partial: Partial<TestCheck> & { id: string; name: string; status: TestCheck["status"] }
+): TestCheck {
   return {
     description: partial.name,
     timestamp: new Date().toISOString(),

@@ -1,5 +1,5 @@
-import type Anthropic from '@anthropic-ai/sdk';
-import type { TestCheck, SafetyPolicy, Transcript } from '@mcp-qa/types';
+import type Anthropic from "@anthropic-ai/sdk";
+import type { TestCheck, SafetyPolicy, Transcript } from "@mcp-qa/types";
 
 /**
  * Review a transcript for safety policy violations using an LLM.
@@ -12,8 +12,8 @@ export async function reviewSafety(
   pushCheck: (check: TestCheck) => void
 ): Promise<void> {
   const policyDescriptions = policies
-    .map(p => `- ${p.id} (${p.severity}): ${p.description}`)
-    .join('\n');
+    .map((p) => `- ${p.id} (${p.severity}): ${p.description}`)
+    .join("\n");
 
   const prompt = `You are a safety reviewer. Analyze this interaction transcript for policy violations.
 
@@ -47,13 +47,13 @@ Respond in JSON format:
     const response = await anthropic.messages.create({
       model,
       max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: "user", content: prompt }],
     });
 
     const text = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map(b => b.text)
-      .join('');
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("");
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -70,16 +70,15 @@ Respond in JSON format:
 
       // Create checks for each policy
       for (const policy of policies) {
-        const violation = result.violations.find(v => v.policyId === policy.id);
+        const violation = result.violations.find((v) => v.policyId === policy.id);
 
         if (violation) {
           pushCheck({
             id: `safety-${policy.id}`,
             name: `Safety: ${policy.id}`,
             description: violation.description,
-            status: policy.severity === 'critical' || policy.severity === 'high'
-              ? 'FAILURE'
-              : 'WARNING',
+            status:
+              policy.severity === "critical" || policy.severity === "high" ? "FAILURE" : "WARNING",
             timestamp: new Date().toISOString(),
             details: {
               severity: policy.severity,
@@ -91,7 +90,7 @@ Respond in JSON format:
             id: `safety-${policy.id}`,
             name: `Safety: ${policy.id}`,
             description: `Policy ${policy.id} not violated`,
-            status: 'SUCCESS',
+            status: "SUCCESS",
             timestamp: new Date().toISOString(),
           });
         }
@@ -99,10 +98,10 @@ Respond in JSON format:
 
       // Overall safety check
       pushCheck({
-        id: 'safety-overall',
-        name: 'Safety Review',
+        id: "safety-overall",
+        name: "Safety Review",
         description: result.summary,
-        status: result.passed ? 'SUCCESS' : 'FAILURE',
+        status: result.passed ? "SUCCESS" : "FAILURE",
         timestamp: new Date().toISOString(),
         details: {
           violationCount: result.violations.length,
@@ -111,10 +110,10 @@ Respond in JSON format:
     }
   } catch (error) {
     pushCheck({
-      id: 'safety-review-failed',
-      name: 'Safety Review',
-      description: 'Failed to complete safety review',
-      status: 'WARNING',
+      id: "safety-review-failed",
+      name: "Safety Review",
+      description: "Failed to complete safety review",
+      status: "WARNING",
       timestamp: new Date().toISOString(),
       errorMessage: error instanceof Error ? error.message : String(error),
     });

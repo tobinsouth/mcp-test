@@ -1,17 +1,17 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * No authentication configuration
  */
 export const NoAuthSchema = z.object({
-  type: z.literal('none'),
+  type: z.literal("none"),
 });
 
 /**
  * OAuth 2.0 Client Credentials flow configuration
  */
 export const ClientCredentialsAuthSchema = z.object({
-  type: z.literal('client_credentials'),
+  type: z.literal("client_credentials"),
   clientId: z.string().optional(),
   clientSecret: z.string().optional(),
   scopes: z.array(z.string()).optional(),
@@ -22,7 +22,7 @@ export const ClientCredentialsAuthSchema = z.object({
  * OAuth 2.0 Authorization Code flow configuration
  */
 export const AuthorizationCodeAuthSchema = z.object({
-  type: z.literal('authorization_code'),
+  type: z.literal("authorization_code"),
   clientId: z.string().optional(),
   clientSecret: z.string().optional(),
   clientMetadataUrl: z.string().url().optional(),
@@ -35,7 +35,7 @@ export const AuthorizationCodeAuthSchema = z.object({
 /**
  * Discriminated union of all auth configurations
  */
-export const AuthConfigSchema = z.discriminatedUnion('type', [
+export const AuthConfigSchema = z.discriminatedUnion("type", [
   NoAuthSchema,
   ClientCredentialsAuthSchema,
   AuthorizationCodeAuthSchema,

@@ -1,13 +1,13 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import type { TestOAuthProvider } from '../auth/provider/test-oauth-provider.js';
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import type { TestOAuthProvider } from "../auth/provider/test-oauth-provider.js";
 
 export interface CreateClientOptions {
   /** Server URL */
   serverUrl: string;
   /** Transport type */
-  transport?: 'streamable-http' | 'sse';
+  transport?: "streamable-http" | "sse";
   /** OAuth provider for authentication */
   authProvider?: TestOAuthProvider;
   /** Additional headers */
@@ -34,11 +34,11 @@ export interface CreateClientResult {
 export async function createMCPClient(options: CreateClientOptions): Promise<CreateClientResult> {
   const {
     serverUrl,
-    transport: transportType = 'streamable-http',
+    transport: transportType = "streamable-http",
     authProvider,
     headers,
-    clientName = 'mcp-qa-runner',
-    clientVersion = '1.0.0',
+    clientName = "mcp-qa-runner",
+    clientVersion = "1.0.0",
   } = options;
 
   // Create the client
@@ -50,18 +50,13 @@ export async function createMCPClient(options: CreateClientOptions): Promise<Cre
   // Create the transport
   let transport: StreamableHTTPClientTransport | SSEClientTransport;
 
-  if (transportType === 'sse') {
-    transport = new SSEClientTransport(
-      new URL(serverUrl),
-    );
+  if (transportType === "sse") {
+    transport = new SSEClientTransport(new URL(serverUrl));
   } else {
-    transport = new StreamableHTTPClientTransport(
-      new URL(serverUrl),
-      {
-        authProvider,
-        requestInit: headers ? { headers } : undefined,
-      }
-    );
+    transport = new StreamableHTTPClientTransport(new URL(serverUrl), {
+      authProvider,
+      requestInit: headers ? { headers } : undefined,
+    });
   }
 
   return { client, transport };

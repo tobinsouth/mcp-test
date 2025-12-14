@@ -1,5 +1,5 @@
-import type { TestCheck, CheckSummary } from '@mcp-qa/types';
-import { summarizeChecks } from '@mcp-qa/core';
+import type { TestCheck, CheckSummary } from "@mcp-qa/types";
+import { summarizeChecks } from "@mcp-qa/core";
 
 /**
  * Create a check recorder that tracks checks and reports progress.
@@ -50,7 +50,7 @@ export function successCheck(
     id,
     name,
     description,
-    status: 'SUCCESS',
+    status: "SUCCESS",
     timestamp: new Date().toISOString(),
     details,
   };
@@ -70,7 +70,7 @@ export function failureCheck(
     id,
     name,
     description,
-    status: 'FAILURE',
+    status: "FAILURE",
     timestamp: new Date().toISOString(),
     errorMessage,
     details,
@@ -90,7 +90,7 @@ export function warningCheck(
     id,
     name,
     description,
-    status: 'WARNING',
+    status: "WARNING",
     timestamp: new Date().toISOString(),
     details,
   };
@@ -109,7 +109,7 @@ export function infoCheck(
     id,
     name,
     description,
-    status: 'INFO',
+    status: "INFO",
     timestamp: new Date().toISOString(),
     details,
   };

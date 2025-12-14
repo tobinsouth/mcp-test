@@ -4,4 +4,4 @@ export {
   disconnectClient,
   type CreateClientOptions,
   type CreateClientResult,
-} from './factory.js';
+} from "./factory.js";

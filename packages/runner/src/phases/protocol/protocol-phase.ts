@@ -1,9 +1,9 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import type { TestCheck } from '@mcp-qa/types';
-import type { TestOAuthProvider } from '@mcp-qa/core';
-import { createCheckRecorder, createTimer, type ExtendedPhaseResult } from '../base/index.js';
-import * as checks from './checks.js';
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { TestCheck } from "@mcp-qa/types";
+import type { TestOAuthProvider } from "@mcp-qa/core";
+import { createCheckRecorder, createTimer, type ExtendedPhaseResult } from "../base/index.js";
+import * as checks from "./checks.js";
 
 export interface ProtocolPhaseOptions {
   onProgress?: (check: TestCheck) => void;
@@ -28,19 +28,16 @@ export async function runProtocolPhase(
   try {
     // Create client
     client = new Client(
-      { name: 'mcp-qa-runner', version: '1.0.0' },
+      { name: "mcp-qa-runner", version: "1.0.0" },
       { capabilities: { sampling: {}, roots: { listChanged: true } } }
     );
 
     recorder.pushCheck(checks.clientCreatedCheck());
 
     // Create transport with auth provider (SDK handles auth automatically)
-    transport = new StreamableHTTPClientTransport(
-      new URL(serverUrl),
-      { authProvider: provider }
-    );
+    transport = new StreamableHTTPClientTransport(new URL(serverUrl), { authProvider: provider });
 
-    recorder.pushCheck(checks.transportCreatedCheck('StreamableHTTP'));
+    recorder.pushCheck(checks.transportCreatedCheck("StreamableHTTP"));
 
     // Connect - this is where auth actually happens via 401 handling
     await client.connect(transport);
@@ -55,15 +52,16 @@ export async function runProtocolPhase(
     if (options?.testCapabilities !== false) {
       const serverCapabilities = client.getServerCapabilities();
 
-      recorder.pushCheck(checks.capabilitiesCheck({
-        hasTools: !!serverCapabilities?.tools,
-        hasResources: !!serverCapabilities?.resources,
-        hasPrompts: !!serverCapabilities?.prompts,
-        hasLogging: !!serverCapabilities?.logging,
-        hasExperimental: !!serverCapabilities?.experimental,
-      }));
+      recorder.pushCheck(
+        checks.capabilitiesCheck({
+          hasTools: !!serverCapabilities?.tools,
+          hasResources: !!serverCapabilities?.resources,
+          hasPrompts: !!serverCapabilities?.prompts,
+          hasLogging: !!serverCapabilities?.logging,
+          hasExperimental: !!serverCapabilities?.experimental,
+        })
+      );
     }
-
   } catch (error) {
     recorder.pushCheck(
       checks.connectionFailedCheck(error instanceof Error ? error.message : String(error))
@@ -71,9 +69,9 @@ export async function runProtocolPhase(
   }
 
   return {
-    phase: 'protocol',
-    name: 'Protocol Conformance',
-    description: 'Testing MCP protocol handshake and capabilities',
+    phase: "protocol",
+    name: "Protocol Conformance",
+    description: "Testing MCP protocol handshake and capabilities",
     startTime: timer.startTime,
     endTime: timer.getEndTime(),
     durationMs: timer.getDurationMs(),

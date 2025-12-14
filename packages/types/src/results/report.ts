@@ -1,10 +1,10 @@
-import { z } from 'zod';
-import { PhaseResultSchema } from './phase-result.js';
+import { z } from "zod";
+import { PhaseResultSchema } from "./phase-result.js";
 
 /**
  * Overall test status
  */
-export const OverallStatusSchema = z.enum(['PASS', 'FAIL', 'WARN']);
+export const OverallStatusSchema = z.enum(["PASS", "FAIL", "WARN"]);
 
 export type OverallStatus = z.infer<typeof OverallStatusSchema>;
 

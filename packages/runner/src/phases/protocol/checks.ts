@@ -1,21 +1,21 @@
-import type { TestCheck } from '@mcp-qa/types';
+import type { TestCheck } from "@mcp-qa/types";
 
 export function clientCreatedCheck(): TestCheck {
   return {
-    id: 'protocol-client-created',
-    name: 'Client Created',
-    description: 'MCP client instance created',
-    status: 'SUCCESS',
+    id: "protocol-client-created",
+    name: "Client Created",
+    description: "MCP client instance created",
+    status: "SUCCESS",
     timestamp: new Date().toISOString(),
   };
 }
 
 export function transportCreatedCheck(transportType: string): TestCheck {
   return {
-    id: 'protocol-transport-created',
-    name: 'Transport Created',
+    id: "protocol-transport-created",
+    name: "Transport Created",
     description: `${transportType} transport created`,
-    status: 'SUCCESS',
+    status: "SUCCESS",
     timestamp: new Date().toISOString(),
     details: { transportType },
   };
@@ -23,20 +23,20 @@ export function transportCreatedCheck(transportType: string): TestCheck {
 
 export function connectedCheck(): TestCheck {
   return {
-    id: 'protocol-connected',
-    name: 'Connection Established',
-    description: 'Successfully connected to MCP server',
-    status: 'SUCCESS',
+    id: "protocol-connected",
+    name: "Connection Established",
+    description: "Successfully connected to MCP server",
+    status: "SUCCESS",
     timestamp: new Date().toISOString(),
   };
 }
 
 export function serverInfoCheck(serverInfo?: { name?: string; version?: string }): TestCheck {
   return {
-    id: 'protocol-server-info',
-    name: 'Server Info',
-    description: 'Retrieved server version information',
-    status: serverInfo ? 'SUCCESS' : 'WARNING',
+    id: "protocol-server-info",
+    name: "Server Info",
+    description: "Retrieved server version information",
+    status: serverInfo ? "SUCCESS" : "WARNING",
     timestamp: new Date().toISOString(),
     details: serverInfo,
   };
@@ -50,10 +50,10 @@ export function capabilitiesCheck(capabilities: {
   hasExperimental?: boolean;
 }): TestCheck {
   return {
-    id: 'protocol-capabilities',
-    name: 'Server Capabilities',
-    description: 'Retrieved server capabilities',
-    status: 'SUCCESS',
+    id: "protocol-capabilities",
+    name: "Server Capabilities",
+    description: "Retrieved server capabilities",
+    status: "SUCCESS",
     timestamp: new Date().toISOString(),
     details: capabilities,
   };
@@ -61,10 +61,10 @@ export function capabilitiesCheck(capabilities: {
 
 export function connectionFailedCheck(error: string): TestCheck {
   return {
-    id: 'protocol-connection-failed',
-    name: 'Connection Failed',
-    description: 'Failed to establish MCP connection',
-    status: 'FAILURE',
+    id: "protocol-connection-failed",
+    name: "Connection Failed",
+    description: "Failed to establish MCP connection",
+    status: "FAILURE",
     timestamp: new Date().toISOString(),
     errorMessage: error,
   };

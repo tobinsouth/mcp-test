@@ -1,5 +1,5 @@
-import { createServer, type Server } from 'node:http';
-import type { InteractiveAuthHandler } from './types.js';
+import { createServer, type Server } from "node:http";
+import type { InteractiveAuthHandler } from "./types.js";
 
 /**
  * CLI interactive auth handler that:
@@ -7,39 +7,37 @@ import type { InteractiveAuthHandler } from './types.js';
  * 2. Spins up a temporary HTTP server to receive the callback
  * 3. Returns the authorization code
  */
-export function createCLIAuthHandler(
-  callbackPort: number = 3456
-): InteractiveAuthHandler {
+export function createCLIAuthHandler(callbackPort: number = 3456): InteractiveAuthHandler {
   let pendingResolve: ((value: { code: string; state?: string }) => void) | null = null;
   let pendingReject: ((error: Error) => void) | null = null;
   let server: Server | null = null;
 
   return {
     async onAuthorizationRequired(authorizationUrl: URL): Promise<void> {
-      console.log('\n[OAuth] Authorization Required');
-      console.log('Opening browser for consent...');
+      console.log("\n[OAuth] Authorization Required");
+      console.log("Opening browser for consent...");
       console.log(`URL: ${authorizationUrl.toString()}\n`);
 
       // Dynamically import 'open' to open browser
       try {
-        const { default: open } = await import('open');
+        const { default: open } = await import("open");
         await open(authorizationUrl.toString());
       } catch {
-        console.log('Could not open browser automatically.');
-        console.log('Please open the URL above manually.\n');
+        console.log("Could not open browser automatically.");
+        console.log("Please open the URL above manually.\n");
       }
 
       // Start callback server
       server = createServer((req, res) => {
-        const url = new URL(req.url || '/', `http://localhost:${callbackPort}`);
+        const url = new URL(req.url || "/", `http://localhost:${callbackPort}`);
 
-        if (url.pathname === '/oauth/callback') {
-          const code = url.searchParams.get('code');
-          const state = url.searchParams.get('state');
-          const error = url.searchParams.get('error');
+        if (url.pathname === "/oauth/callback") {
+          const code = url.searchParams.get("code");
+          const state = url.searchParams.get("state");
+          const error = url.searchParams.get("error");
 
           if (error) {
-            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.writeHead(200, { "Content-Type": "text/html" });
             res.end(`
               <!DOCTYPE html>
               <html>
@@ -52,7 +50,7 @@ export function createCLIAuthHandler(
             `);
             pendingReject?.(new Error(error));
           } else if (code) {
-            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.writeHead(200, { "Content-Type": "text/html" });
             res.end(`
               <!DOCTYPE html>
               <html>
@@ -64,21 +62,21 @@ export function createCLIAuthHandler(
             `);
             pendingResolve?.({ code, state: state || undefined });
           } else {
-            res.writeHead(400, { 'Content-Type': 'text/html' });
-            res.end('<h1>Invalid Callback</h1>');
+            res.writeHead(400, { "Content-Type": "text/html" });
+            res.end("<h1>Invalid Callback</h1>");
           }
 
           // Cleanup server after response
           setTimeout(() => server?.close(), 100);
         } else {
           res.writeHead(404);
-          res.end('Not Found');
+          res.end("Not Found");
         }
       });
 
       server.listen(callbackPort);
       console.log(`Listening for callback on http://localhost:${callbackPort}/oauth/callback`);
-      console.log('Waiting for you to complete authorization in the browser...\n');
+      console.log("Waiting for you to complete authorization in the browser...\n");
     },
 
     waitForCallback(): Promise<{ code: string; state?: string }> {
@@ -87,10 +85,13 @@ export function createCLIAuthHandler(
         pendingReject = reject;
 
         // Timeout after 5 minutes
-        setTimeout(() => {
-          reject(new Error('OAuth callback timeout (5 minutes)'));
-          server?.close();
-        }, 5 * 60 * 1000);
+        setTimeout(
+          () => {
+            reject(new Error("OAuth callback timeout (5 minutes)"));
+            server?.close();
+          },
+          5 * 60 * 1000
+        );
       });
     },
   };
@@ -98,8 +99,8 @@ export function createCLIAuthHandler(
 
 function escapeHtml(str: string): string {
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

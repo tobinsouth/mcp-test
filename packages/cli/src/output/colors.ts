@@ -2,19 +2,19 @@
  * Terminal color codes
  */
 const colors = {
-  reset: '\x1b[0m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
+  reset: "\x1b[0m",
+  bold: "\x1b[1m",
+  dim: "\x1b[2m",
 
   // Foreground colors
-  red: '\x1b[31m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  magenta: '\x1b[35m',
-  cyan: '\x1b[36m',
-  white: '\x1b[37m',
-  gray: '\x1b[90m',
+  red: "\x1b[31m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  blue: "\x1b[34m",
+  magenta: "\x1b[35m",
+  cyan: "\x1b[36m",
+  white: "\x1b[37m",
+  gray: "\x1b[90m",
 };
 
 let colorsEnabled = true;
@@ -42,39 +42,39 @@ function colorize(text: string, color: keyof typeof colors): string {
 }
 
 export function bold(text: string): string {
-  return colorize(text, 'bold');
+  return colorize(text, "bold");
 }
 
 export function dim(text: string): string {
-  return colorize(text, 'dim');
+  return colorize(text, "dim");
 }
 
 export function red(text: string): string {
-  return colorize(text, 'red');
+  return colorize(text, "red");
 }
 
 export function green(text: string): string {
-  return colorize(text, 'green');
+  return colorize(text, "green");
 }
 
 export function yellow(text: string): string {
-  return colorize(text, 'yellow');
+  return colorize(text, "yellow");
 }
 
 export function blue(text: string): string {
-  return colorize(text, 'blue');
+  return colorize(text, "blue");
 }
 
 export function magenta(text: string): string {
-  return colorize(text, 'magenta');
+  return colorize(text, "magenta");
 }
 
 export function cyan(text: string): string {
-  return colorize(text, 'cyan');
+  return colorize(text, "cyan");
 }
 
 export function gray(text: string): string {
-  return colorize(text, 'gray');
+  return colorize(text, "gray");
 }
 
 /**
@@ -82,18 +82,18 @@ export function gray(text: string): string {
  */
 export function statusIcon(status: string): string {
   switch (status) {
-    case 'SUCCESS':
-      return green('✓');
-    case 'FAILURE':
-      return red('✗');
-    case 'WARNING':
-      return yellow('⚠');
-    case 'SKIPPED':
-      return gray('○');
-    case 'INFO':
-      return blue('•');
+    case "SUCCESS":
+      return green("✓");
+    case "FAILURE":
+      return red("✗");
+    case "WARNING":
+      return yellow("⚠");
+    case "SKIPPED":
+      return gray("○");
+    case "INFO":
+      return blue("•");
     default:
-      return dim('?');
+      return dim("?");
   }
 }
 
@@ -102,18 +102,18 @@ export function statusIcon(status: string): string {
  */
 export function statusText(status: string): string {
   switch (status) {
-    case 'SUCCESS':
-    case 'PASS':
+    case "SUCCESS":
+    case "PASS":
       return green(status);
-    case 'FAILURE':
-    case 'FAIL':
+    case "FAILURE":
+    case "FAIL":
       return red(status);
-    case 'WARNING':
-    case 'WARN':
+    case "WARNING":
+    case "WARN":
       return yellow(status);
-    case 'SKIPPED':
+    case "SKIPPED":
       return gray(status);
-    case 'INFO':
+    case "INFO":
       return blue(status);
     default:
       return dim(status);

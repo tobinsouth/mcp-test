@@ -1,5 +1,5 @@
-import type Anthropic from '@anthropic-ai/sdk';
-import type { TestCheck, Transcript, Expectation } from '@mcp-qa/types';
+import type Anthropic from "@anthropic-ai/sdk";
+import type { TestCheck, Transcript, Expectation } from "@mcp-qa/types";
 
 /**
  * Review a transcript for quality using an LLM.
@@ -16,7 +16,7 @@ export async function reviewQuality(
 Transcript:
 ${JSON.stringify(transcript, null, 2)}
 
-${expectations?.customValidation ? `Custom validation criteria: ${expectations.customValidation}` : ''}
+${expectations?.customValidation ? `Custom validation criteria: ${expectations.customValidation}` : ""}
 
 Evaluate:
 1. Did the interaction complete successfully?
@@ -37,18 +37,18 @@ Respond in JSON format:
     const response = await anthropic.messages.create({
       model,
       max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: "user", content: prompt }],
     });
 
     const text = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map(b => b.text)
-      .join('');
+      .filter((b): b is Anthropic.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .join("");
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const result = JSON.parse(jsonMatch[0]) as {
-        overallQuality: 'high' | 'medium' | 'low';
+        overallQuality: "high" | "medium" | "low";
         completedSuccessfully: boolean;
         appropriateToolUsage: boolean;
         issues: string[];
@@ -56,11 +56,15 @@ Respond in JSON format:
       };
 
       pushCheck({
-        id: 'quality-overall',
-        name: 'Quality Assessment',
+        id: "quality-overall",
+        name: "Quality Assessment",
         description: `Overall quality: ${result.overallQuality}`,
-        status: result.overallQuality === 'high' ? 'SUCCESS' :
-                result.overallQuality === 'medium' ? 'WARNING' : 'FAILURE',
+        status:
+          result.overallQuality === "high"
+            ? "SUCCESS"
+            : result.overallQuality === "medium"
+              ? "WARNING"
+              : "FAILURE",
         timestamp: new Date().toISOString(),
         details: {
           completedSuccessfully: result.completedSuccessfully,
@@ -72,10 +76,10 @@ Respond in JSON format:
     }
   } catch (error) {
     pushCheck({
-      id: 'quality-review-failed',
-      name: 'Quality Review',
-      description: 'Failed to complete quality review',
-      status: 'WARNING',
+      id: "quality-review-failed",
+      name: "Quality Review",
+      description: "Failed to complete quality review",
+      status: "WARNING",
       timestamp: new Date().toISOString(),
       errorMessage: error instanceof Error ? error.message : String(error),
     });

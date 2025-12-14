@@ -1,15 +1,10 @@
-import { z } from 'zod';
-import { TestCheckSchema } from './check.js';
+import { z } from "zod";
+import { TestCheckSchema } from "./check.js";
 
 /**
  * Phase name enum
  */
-export const PhaseNameSchema = z.enum([
-  'auth',
-  'protocol',
-  'tools',
-  'interaction',
-]);
+export const PhaseNameSchema = z.enum(["auth", "protocol", "tools", "interaction"]);
 
 export type PhaseName = z.infer<typeof PhaseNameSchema>;
 

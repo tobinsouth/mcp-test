@@ -1,5 +1,5 @@
-import type { TestCheck } from '@mcp-qa/types';
-import { statusIcon, bold, dim, cyan } from './colors.js';
+import type { TestCheck } from "@mcp-qa/types";
+import { statusIcon, bold, dim, cyan } from "./colors.js";
 
 /**
  * Format a check for console output
@@ -24,9 +24,7 @@ export function formatPhaseStart(phaseName: string): string {
  * Format phase completion
  */
 export function formatPhaseComplete(phaseName: string, durationMs: number): string {
-  const duration = durationMs < 1000
-    ? `${durationMs}ms`
-    : `${(durationMs / 1000).toFixed(1)}s`;
+  const duration = durationMs < 1000 ? `${durationMs}ms` : `${(durationMs / 1000).toFixed(1)}s`;
   return dim(`Phase ${phaseName} completed in ${duration}`);
 }
 
@@ -34,7 +32,7 @@ export function formatPhaseComplete(phaseName: string, durationMs: number): stri
  * Create a simple progress indicator
  */
 export class ProgressIndicator {
-  private currentPhase = '';
+  private currentPhase = "";
   private checkCount = 0;
 
   /**
@@ -79,7 +77,7 @@ export function createVerboseProgressCallback(): (phase: string, check: TestChec
  */
 export function createQuietProgressCallback(): (phase: string, check: TestCheck) => void {
   return (phase, check) => {
-    if (check.status === 'FAILURE' || check.status === 'WARNING') {
+    if (check.status === "FAILURE" || check.status === "WARNING") {
       console.log(formatCheck(phase, check));
     }
   };

@@ -1,15 +1,15 @@
-import { z } from 'zod';
-import { AuthConfigSchema } from './auth.js';
-import { ServerConfigSchema } from './server.js';
-import { PhaseConfigSchema } from './phases.js';
-import { OutputConfigSchema } from './output.js';
+import { z } from "zod";
+import { AuthConfigSchema } from "./auth.js";
+import { ServerConfigSchema } from "./server.js";
+import { PhaseConfigSchema } from "./phases.js";
+import { OutputConfigSchema } from "./output.js";
 
 /**
  * Main test configuration schema
  */
 export const TestConfigSchema = z.object({
   /** Configuration version */
-  version: z.literal('1.0'),
+  version: z.literal("1.0"),
   /** Server connection configuration */
   server: ServerConfigSchema,
   /** Authentication configuration */

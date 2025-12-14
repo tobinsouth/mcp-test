@@ -12,7 +12,7 @@ export {
   gray,
   statusIcon,
   statusText,
-} from './colors.js';
+} from "./colors.js";
 
 export {
   formatCheck,
@@ -21,10 +21,6 @@ export {
   ProgressIndicator,
   createVerboseProgressCallback,
   createQuietProgressCallback,
-} from './progress.js';
+} from "./progress.js";
 
-export {
-  formatReport,
-  formatReportJson,
-  printSummaryLine,
-} from './reporter.js';
+export { formatReport, formatReportJson, printSummaryLine } from "./reporter.js";

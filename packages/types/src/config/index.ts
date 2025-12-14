@@ -8,13 +8,10 @@ export {
   type ClientCredentialsAuthConfig,
   type AuthorizationCodeAuthConfig,
   type AuthConfig,
-} from './auth.js';
+} from "./auth.js";
 
 // Server configuration
-export {
-  ServerConfigSchema,
-  type ServerConfig,
-} from './server.js';
+export { ServerConfigSchema, type ServerConfig } from "./server.js";
 
 // Phase configuration
 export {
@@ -36,16 +33,10 @@ export {
   type ToolsPhaseConfig,
   type InteractionPhaseConfig,
   type PhaseConfig,
-} from './phases.js';
+} from "./phases.js";
 
 // Output configuration
-export {
-  OutputConfigSchema,
-  type OutputConfig,
-} from './output.js';
+export { OutputConfigSchema, type OutputConfig } from "./output.js";
 
 // Main test configuration
-export {
-  TestConfigSchema,
-  type TestConfig,
-} from './test-config.js';
+export { TestConfigSchema, type TestConfig } from "./test-config.js";
