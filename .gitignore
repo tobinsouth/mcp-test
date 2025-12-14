@@ -103,3 +103,10 @@ storybook-static/
 
 # Sentry
 .sentryclirc
+
+# Working directories you don't want to track
+transcripts/
+temp/
+
+# The default config file you might want to ignore
+my-config.json 
