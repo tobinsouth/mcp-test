@@ -10,7 +10,7 @@
   },
   "phases": {
     "auth": {
-      "enabled": false
+      "enabled": true
     },
     "protocol": {
       "enabled": true,
