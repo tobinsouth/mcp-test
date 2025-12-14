@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "server": {
+    "url": "http://localhost:3002/mcp",
+    "name": "Protected Server (OAuth DCR)"
+  },
+  "auth": {
+    "type": "authorization_code",
+    "useDCR": true,
+    "scopes": ["mcp:tools"],
+    "interactive": true
+  },
+  "phases": {
+    "auth": {
+      "enabled": true,
+      "timeout": 120000
+    },
+    "protocol": {
+      "enabled": true,
+      "testCapabilities": true
+    },
+    "tools": {
+      "enabled": true,
+      "analyzeTokenCounts": true
+    },
+    "interaction": {
+      "enabled": true,
+      "prompts": [
+        {
+          "id": "secret-test",
+          "name": "Get Secret Test",
+          "prompt": "Use the get_secret tool to retrieve the secret message",
+          "expectations": {
+            "expectedToolCalls": [
+              { "toolName": "get_secret" }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

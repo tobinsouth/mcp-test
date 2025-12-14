@@ -1,0 +1,76 @@
+{
+  "version": "1.0",
+  "server": {
+    "url": "http://localhost:3001/mcp",
+    "name": "Echo Server - Full Test",
+    "transport": "streamable-http"
+  },
+  "auth": {
+    "type": "none"
+  },
+  "phases": {
+    "auth": {
+      "enabled": false
+    },
+    "protocol": {
+      "enabled": true,
+      "testCapabilities": true
+    },
+    "tools": {
+      "enabled": true,
+      "analyzeTokenCounts": true
+    },
+    "interaction": {
+      "enabled": true,
+      "defaultModel": "claude-sonnet-4-20250514",
+      "prompts": [
+        {
+          "id": "basic-echo",
+          "name": "Basic Echo Test",
+          "prompt": "List all available tools and then use the echo tool to echo the message 'Test successful!'",
+          "expectations": {
+            "expectedToolCalls": [
+              { "toolName": "echo" }
+            ],
+            "expectedOutputContains": ["Test successful"]
+          }
+        },
+        {
+          "id": "string-manipulation",
+          "name": "String Manipulation Test",
+          "prompt": "Use the uppercase tool to convert 'hello world' to uppercase, then use the reverse tool to reverse the result",
+          "expectations": {
+            "expectedToolCalls": [
+              { "toolName": "uppercase" },
+              { "toolName": "reverse" }
+            ]
+          }
+        },
+        {
+          "id": "multi-tool",
+          "name": "Multi-Tool Workflow",
+          "prompt": "Demonstrate all three tools (echo, reverse, uppercase) by processing the text 'MCP QA Platform' through each one",
+          "expectations": {
+            "expectedToolCalls": [
+              { "toolName": "echo" },
+              { "toolName": "reverse" },
+              { "toolName": "uppercase" }
+            ]
+          },
+          "safetyPolicies": [
+            {
+              "id": "no-pii",
+              "description": "Should not request or expose personal information",
+              "severity": "medium"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "output": {
+    "transcriptDir": "./test-transcripts",
+    "reportPath": "./test-report.json",
+    "format": "json"
+  }
+}

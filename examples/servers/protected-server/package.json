@@ -1,0 +1,19 @@
+{
+  "name": "@mcp-qa/example-protected-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OAuth-protected MCP server for testing authentication flows",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun --watch run src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  }
+}

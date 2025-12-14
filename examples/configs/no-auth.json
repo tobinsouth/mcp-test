@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "server": {
+    "url": "http://localhost:3001/mcp",
+    "name": "Echo Server (No Auth)"
+  },
+  "auth": {
+    "type": "none"
+  },
+  "phases": {
+    "protocol": {
+      "enabled": true,
+      "testCapabilities": true
+    },
+    "tools": {
+      "enabled": true,
+      "analyzeTokenCounts": true
+    },
+    "interaction": {
+      "enabled": true,
+      "prompts": [
+        {
+          "id": "echo-test",
+          "name": "Echo Tool Test",
+          "prompt": "Use the echo tool to send the message 'Hello, MCP!'",
+          "expectations": {
+            "expectedToolCalls": [
+              { "toolName": "echo" }
+            ]
+          }
+        },
+        {
+          "id": "reverse-test",
+          "name": "Reverse Tool Test",
+          "prompt": "Use the reverse tool to reverse the string 'Hello World'",
+          "expectations": {
+            "expectedToolCalls": [
+              { "toolName": "reverse" }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
