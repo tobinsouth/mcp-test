@@ -12,6 +12,20 @@ A comprehensive QA testing platform for MCP (Model Context Protocol) servers. It
 
 ---
 
+## Implementation Status
+
+| Package | Status | Notes |
+|---------|--------|-------|
+| `@mcp-qa/types` | Implemented | All schemas and types complete |
+| `@mcp-qa/core` | Implemented | Auth, handlers, session stores, utilities |
+| `@mcp-qa/runner` | Implemented | All 4 phases (auth, protocol, tools, interaction) |
+| `@mcp-qa/cli` | Implemented | Commands, output formatting |
+| `@mcp-qa/web` | Scaffolded | Directory structure only, no implementation |
+
+**Testing:** No unit tests exist yet. Test infrastructure needs to be added.
+
+---
+
 ## Architecture
 
 ### Monorepo Structure
@@ -133,20 +147,15 @@ mcp-qa-platform/
 
 **Purpose:** Next.js frontend for interactive testing.
 
-**Key routes:**
-- `/` - Dashboard
-- `/test/[id]` - Test detail view
-- `/api/run` - Start test (POST)
-- `/api/status` - Progress stream (SSE)
-- `/api/oauth/callback` - OAuth callback handler
-- `/api/oauth/poll/[runId]` - Poll callback status
+**Status:** Scaffolded only - directory structure exists but no implementation.
 
-**OAuth handling:** Uses session store + state encoding for serverless compatibility. Flow: Runner → Session Store → OAuth Popup → Callback API → Session Store → Runner
+**Planned features:**
+- Configuration editor with JSON schema validation
+- Real-time test progress via SSE
+- OAuth flow with serverless-compatible session handling
+- Transcript viewer for Claude interactions
 
-**Structure:**
-- `app/` - Next.js App Router pages and API routes
-- `components/` - React components (config, results, transcript, layout)
-- `lib/` - Server-side utilities and hooks
+See `packages/web/README.md` for the planned architecture.
 
 ---
 
@@ -160,13 +169,15 @@ We do NOT implement custom OAuth logic. Instead:
 3. `StreamableHTTPClientTransport` with `authProvider` handles automatic auth
 4. We record checks during provider callbacks for observability
 
-### Cross-Process OAuth (Web)
+### Cross-Process OAuth (Web) - Planned
 
-Serverless functions can't share memory, so:
+For serverless deployments (when web is implemented):
 1. Runner generates `runId`, stores session in Redis/KV
 2. OAuth `state` parameter encodes `runId` for callback identification
 3. Callback API updates session store
 4. Runner polls session store for completion
+
+Note: Session store interfaces already exist in `@mcp-qa/core` (MemorySessionStore, RedisSessionStore).
 
 ### Test Configuration
 
@@ -256,5 +267,4 @@ Create a new package under `packages/`:
 | Modify auth flow | `packages/core/src/auth/` |
 | Add test checks | `packages/runner/src/phases/<phase>/checks.ts` |
 | Change CLI output | `packages/cli/src/output/` |
-| Add web API routes | `packages/web/app/api/` |
-| Add web components | `packages/web/components/` |
+| See example configs | `examples/configs/` |
