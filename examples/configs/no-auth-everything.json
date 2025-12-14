@@ -1,0 +1,109 @@
+{
+  "version": "1.0",
+  "server": {
+    "name": "No-Auth Everything Server",
+    "url": "http://localhost:3000/mcp",
+    "transport": "streamable-http"
+  },
+  "auth": {
+    "type": "none"
+  },
+  "phases": {
+    "auth": {
+      "enabled": false
+    },
+    "protocol": {
+      "enabled": true,
+      "testInitialization": true,
+      "testCapabilities": true,
+      "timeout": 30000
+    },
+    "tools": {
+      "enabled": true,
+      "analyzeTokenCounts": true,
+      "timeout": 30000
+    },
+    "interaction": {
+      "enabled": true,
+      "prompts": [
+        {
+          "id": "echo-test",
+          "name": "Echo Tool Test",
+          "prompt": "Use the echo tool to say 'Hello from MCP QA!'",
+          "expectations": {
+            "expectedToolCalls": [
+              {
+                "toolName": "echo",
+                "argumentsContain": { "message": "Hello" }
+              }
+            ],
+            "shouldSucceed": true
+          }
+        },
+        {
+          "id": "math-test",
+          "name": "Add Numbers Test",
+          "prompt": "Use the add tool to calculate 42 + 58",
+          "expectations": {
+            "expectedToolCalls": [
+              {
+                "toolName": "add",
+                "argumentsContain": { "a": 42, "b": 58 }
+              }
+            ],
+            "shouldSucceed": true
+          }
+        },
+        {
+          "id": "time-test",
+          "name": "Get Time Test",
+          "prompt": "What is the current server time? Use the get_time tool.",
+          "expectations": {
+            "expectedToolCalls": [
+              { "toolName": "get_time" }
+            ],
+            "shouldSucceed": true
+          }
+        },
+        {
+          "id": "error-handling-test",
+          "name": "Error Handling Test",
+          "prompt": "Call the throw_error tool with message 'intentional test error'",
+          "expectations": {
+            "expectedToolCalls": [
+              { "toolName": "throw_error" }
+            ],
+            "shouldSucceed": true
+          }
+        },
+        {
+          "id": "complex-tool-test",
+          "name": "Create User Test",
+          "prompt": "Create a new user with name 'Test User', email 'test@example.com', age 30, and roles ['admin', 'user']",
+          "expectations": {
+            "expectedToolCalls": [
+              {
+                "toolName": "create_user",
+                "argumentsContain": {
+                  "name": "Test User",
+                  "email": "test@example.com"
+                }
+              }
+            ],
+            "shouldSucceed": true
+          }
+        }
+      ],
+      "defaultModel": "claude-sonnet-4-20250514"
+    }
+  },
+  "output": {
+    "transcriptsDir": "./transcripts",
+    "reportPath": "./report.json",
+    "format": "json"
+  },
+  "metadata": {
+    "description": "Test configuration for the no-auth-everything example server",
+    "serverLocation": "../servers/no-auth-everything"
+  }
+}
