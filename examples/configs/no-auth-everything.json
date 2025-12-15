@@ -34,7 +34,7 @@
             "expectedToolCalls": [
               {
                 "toolName": "echo",
-                "argumentsContain": { "message": "Hello" }
+                "argumentsContain": { "message": "Hello from MCP QA!" }
               }
             ],
             "shouldSucceed": true
