@@ -1,11 +1,21 @@
 import * as fs from "node:fs/promises";
-import type { TestConfig, TestReport, TestCheck } from "@mcp-qa/types";
+import type { TestConfig, TestReport, TestCheck, PhaseResult } from "@mcp-qa/types";
 import { createCLIAuthHandler, type InteractiveAuthHandler } from "@mcp-qa/core";
 import { loadConfig } from "./config-loader.js";
 import { runAuthPhase } from "./phases/auth/index.js";
 import { runProtocolPhase } from "./phases/protocol/index.js";
 import { runToolsPhase } from "./phases/tools/index.js";
 import { runInteractionPhase } from "./phases/interaction/index.js";
+import type { ExtendedPhaseResult } from "./phases/base/index.js";
+
+/**
+ * Convert ExtendedPhaseResult to serializable PhaseResult by stripping
+ * non-serializable properties (client, provider, transport, cleanup).
+ */
+function toPhaseResult(extended: ExtendedPhaseResult): PhaseResult {
+  const { phase, name, description, startTime, endTime, durationMs, checks, summary } = extended;
+  return { phase, name, description, startTime, endTime, durationMs, checks, summary };
+}
 
 export interface RunTestsOptions {
   /** Anthropic API key for interaction testing */
@@ -68,7 +78,7 @@ export async function runTestsWithConfig(
         },
         interactiveHandler,
       });
-      report.phases.push(authResult);
+      report.phases.push(toPhaseResult(authResult));
 
       // Phase 2: Protocol (using auth provider - auth happens here via 401)
       if (config.phases?.protocol?.enabled !== false) {
@@ -76,7 +86,7 @@ export async function runTestsWithConfig(
           onProgress: (check) => options?.onProgress?.("protocol", check),
           testCapabilities: config.phases?.protocol?.testCapabilities,
         });
-        report.phases.push(protocolResult);
+        report.phases.push(toPhaseResult(protocolResult));
         if (protocolResult.cleanup) cleanupFns.push(protocolResult.cleanup);
 
         // Phase 3: Tools
@@ -85,7 +95,7 @@ export async function runTestsWithConfig(
             onProgress: (check) => options?.onProgress?.("tools", check),
             analyzeTokenCounts: config.phases?.tools?.analyzeTokenCounts,
           });
-          report.phases.push(toolsResult);
+          report.phases.push(toPhaseResult(toolsResult));
         }
 
         // Phase 4: Interaction
@@ -108,7 +118,7 @@ export async function runTestsWithConfig(
             safetyReviewModel: config.phases?.interaction?.safetyReviewModel,
             qualityReviewModel: config.phases?.interaction?.qualityReviewModel,
           });
-          report.phases.push(interactionResult);
+          report.phases.push(toPhaseResult(interactionResult));
         }
       }
     }
