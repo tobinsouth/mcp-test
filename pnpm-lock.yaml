@@ -61,6 +61,31 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
+  examples/servers/no-auth-failing:
+    dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.20.1
+        version: 1.24.3(zod@3.25.76)
+      express:
+        specifier: ^5.1.0
+        version: 5.2.1
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
+    devDependencies:
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.6
+      '@types/node':
+        specifier: ^20.0.0
+        version: 20.19.25
+      tsx:
+        specifier: ^4.7.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
+
   packages/cli:
     dependencies:
       '@mcp-qa/core':

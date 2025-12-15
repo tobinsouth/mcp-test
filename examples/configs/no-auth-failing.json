@@ -1,0 +1,138 @@
+{
+  "version": "1.0",
+  "server": {
+    "name": "No-Auth Failing Server",
+    "url": "http://localhost:3001/mcp",
+    "transport": "streamable-http"
+  },
+  "auth": {
+    "type": "none"
+  },
+  "phases": {
+    "auth": {
+      "enabled": true
+    },
+    "protocol": {
+      "enabled": true,
+      "testInitialization": true,
+      "testCapabilities": true,
+      "timeout": 30000
+    },
+    "tools": {
+      "enabled": true,
+      "analyzeTokenCounts": true,
+      "timeout": 30000
+    },
+    "interaction": {
+      "enabled": true,
+      "prompts": [
+        {
+          "id": "unreliable-echo-test",
+          "name": "Unreliable Echo Test",
+          "prompt": "Use the unreliable_echo tool to echo 'Hello'",
+          "expectations": {
+            "expectedToolCalls": [
+              {
+                "toolName": "unreliable_echo",
+                "argumentsContain": { "message": "Hello" }
+              }
+            ],
+            "shouldSucceed": true
+          },
+          "tags": ["expected-failure", "tool-error"]
+        },
+        {
+          "id": "broken-math-test",
+          "name": "Broken Math Test",
+          "prompt": "Use the broken_math tool to add 10 and 5. The result should be 15.",
+          "expectations": {
+            "expectedToolCalls": [
+              {
+                "toolName": "broken_math",
+                "argumentsContain": { "a": 10, "b": 5 }
+              }
+            ],
+            "shouldSucceed": true
+          },
+          "tags": ["expected-failure", "wrong-result"]
+        },
+        {
+          "id": "empty-response-test",
+          "name": "Empty Response Test",
+          "prompt": "Use the empty_response tool with query 'test data' and tell me what you get back",
+          "expectations": {
+            "expectedToolCalls": [
+              { "toolName": "empty_response" }
+            ],
+            "shouldSucceed": true
+          },
+          "tags": ["expected-failure", "empty-content"]
+        },
+        {
+          "id": "working-echo-test",
+          "name": "Working Echo Test (Control)",
+          "prompt": "Use the working_echo tool to echo 'Test message'",
+          "expectations": {
+            "expectedToolCalls": [
+              {
+                "toolName": "working_echo",
+                "argumentsContain": { "message": "Test message" }
+              }
+            ],
+            "shouldSucceed": true
+          },
+          "tags": ["control", "should-pass"]
+        },
+        {
+          "id": "wrong-tool-expectation",
+          "name": "Wrong Tool Expectation Test",
+          "prompt": "Use the working_echo tool to say 'Hello'",
+          "expectations": {
+            "expectedToolCalls": [
+              {
+                "toolName": "nonexistent_tool"
+              }
+            ],
+            "shouldSucceed": true
+          },
+          "tags": ["expected-failure", "expectation-mismatch"]
+        },
+        {
+          "id": "ignoring-tool-test",
+          "name": "Ignoring Input Test",
+          "prompt": "Use the ignoring_tool with greeting 'My custom greeting!' and verify it uses your input",
+          "expectations": {
+            "expectedToolCalls": [
+              {
+                "toolName": "ignoring_tool",
+                "argumentsContain": { "greeting": "My custom greeting!" }
+              }
+            ],
+            "shouldSucceed": true
+          },
+          "tags": ["expected-failure", "ignores-input"]
+        }
+      ],
+      "defaultModel": "claude-sonnet-4-20250514"
+    }
+  },
+  "output": {
+    "transcriptsDir": "./transcripts",
+    "reportPath": "./report-failing.json",
+    "format": "json"
+  },
+  "metadata": {
+    "description": "Test configuration for the deliberately-failing no-auth server. Most tests should fail.",
+    "serverLocation": "../servers/no-auth-failing",
+    "expectedFailures": [
+      "unreliable-echo-test: Tool always throws errors",
+      "broken-math-test: Tool returns wrong results (subtracts instead of adds)",
+      "empty-response-test: Tool returns empty content",
+      "wrong-tool-expectation: Expects a tool that doesn't exist",
+      "ignoring-tool-test: Tool ignores input and returns fixed response"
+    ],
+    "expectedPasses": [
+      "working-echo-test: Control test that should pass"
+    ]
+  }
+}
