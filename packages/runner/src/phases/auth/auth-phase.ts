@@ -145,10 +145,12 @@ function buildProvider(
     return new TestOAuthProvider(
       {
         redirectUrl: undefined,
+        grantType: "client_credentials",
         clientMetadata: {
           grant_types: ["client_credentials"],
           redirect_uris: [],
           scope: authConfig.scopes?.join(" "),
+          token_endpoint_auth_method: "client_secret_basic",
         },
         preRegisteredClient: authConfig.clientId
           ? { client_id: authConfig.clientId, client_secret: authConfig.clientSecret }

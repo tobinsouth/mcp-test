@@ -1,0 +1,22 @@
+{
+  "name": "@mcp-qa/example-server-no-auth-failing",
+  "version": "1.0.0",
+  "description": "No-auth MCP test server with deliberate subtle failures for QA testing",
+  "type": "module",
+  "main": "server.ts",
+  "scripts": {
+    "start": "tsx server.ts",
+    "dev": "tsx watch server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.20.1",
+    "express": "^5.1.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.5.4"
+  }
+}
