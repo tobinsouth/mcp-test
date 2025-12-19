@@ -23,6 +23,8 @@ export interface TestOAuthProviderConfig {
   clientMetadataUrl?: string;
   /** Pre-registered client information */
   preRegisteredClient?: OAuthClientInformationMixed;
+  /** Grant type for this provider (defaults based on clientMetadata.grant_types) */
+  grantType?: "authorization_code" | "client_credentials";
 }
 
 /**
@@ -239,5 +241,35 @@ export class TestOAuthProvider implements OAuthClientProvider {
         this._codeVerifier = undefined;
         break;
     }
+  }
+
+  // === Client Credentials Support ===
+
+  /**
+   * Prepare token request parameters.
+   * For client_credentials: Returns URLSearchParams with grant_type=client_credentials
+   * For authorization_code: Returns undefined to let SDK use default flow
+   */
+  prepareTokenRequest(scope?: string): URLSearchParams | undefined {
+    const grantType =
+      this.config.grantType || this.config.clientMetadata.grant_types?.[0] || "authorization_code";
+
+    if (grantType === "client_credentials") {
+      this.recorder.pushCheck({
+        id: "auth-client-credentials-request",
+        name: "Client Credentials Request",
+        description: "Preparing client_credentials token request",
+        status: "INFO",
+        timestamp: new Date().toISOString(),
+        details: { grantType, scope },
+      });
+
+      const params = new URLSearchParams({ grant_type: "client_credentials" });
+      if (scope) params.set("scope", scope);
+      return params;
+    }
+
+    // For authorization_code, return undefined to use default SDK behavior
+    return undefined;
   }
 }
